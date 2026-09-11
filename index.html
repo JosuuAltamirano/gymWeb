@@ -462,7 +462,9 @@ function defaultState(){
     checklist:{fecha:null, marcados:{}},
     medidas:[],
     fotos:{ultimaFecha:null},
-    subirPeso:{}
+    subirPeso:{},
+    sesionesHechas:[],
+    deload:{ultimaFecha:null}
   };
 }
 let state = loadState();
@@ -517,6 +519,30 @@ function parseRepRange(str){
   if(nums.length===0) return {low:0, high:0};
   if(nums.length===1) return {low:nums[0], high:nums[0]};
   return {low:nums[0], high:nums[1]};
+}
+function fmtDescanso(seg){
+  if(seg < 60) return seg+"s";
+  const m = Math.floor(seg/60), s = seg%60;
+  return s ? m+"m "+s+"s" : m+"m";
+}
+function tipoEjercicio(id, fallback){
+  if(fallback) return fallback;
+  for(const dk of DIAS_ORDEN){
+    const dia = RUTINA_NORMAL.dias[dk];
+    if(!dia || !dia.ejercicios) continue;
+    const ex = dia.ejercicios.find(e=>e.id===id);
+    if(ex && ex.tipo) return ex.tipo;
+  }
+  return "aislamiento";
+}
+function incrementoPara(id, tipo){
+  return tipoEjercicio(id, tipo)==="pesado" ? 2.5 : 1.25;
+}
+function redondear(kg){ return Math.round(kg/2.5)*2.5; }
+function horarioGymHoy(diaKey){
+  if(diaKey==="sabado") return HORARIOS_GYM["Sábado"];
+  if(diaKey==="domingo") return HORARIOS_GYM["Domingo y festivos"];
+  return HORARIOS_GYM["L-V"];
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -592,6 +618,10 @@ RENDERERS.hoy = function(){
   const esDescanso = !dia.ejercicios || dia.ejercicios.length===0;
   const diasDesdeInicio = Math.max(0, daysBetween(PERFIL.fecha_inicio, hoyISO));
   const ultimoPeso = state.pesoLog.length ? state.pesoLog[state.pesoLog.length-1] : null;
+  const tocaPesaje = !ultimoPeso || daysBetween(ultimoPeso.fecha, hoyISO) >= 7;
+  const semanas = Math.floor(diasDesdeInicio/7);
+  const tocaDeload = state.modo!=="obra" && semanas>=8 &&
+    (!state.deload.ultimaFecha || daysBetween(state.deload.ultimaFecha, hoyISO) >= 56);
 
   el.innerHTML = `
     <div class="card">
@@ -604,11 +634,19 @@ RENDERERS.hoy = function(){
       </div>
       ${dia.aviso? `<p class="muted">⚠️ ${escapeHtml(dia.aviso)}</p>`:""}
       ${NOTAS_DIA[diaKey] ? `<p class="muted" style="font-size:.82rem;">${escapeHtml(NOTAS_DIA[diaKey])}</p>` : ""}
+      <p class="muted" style="font-size:.78rem;">Gym hoy: ${horarioGymHoy(diaKey)}</p>
       ${esDescanso
         ? `<p class="frase">"${randFrase()}"</p>`
         : `<button class="btn btn-primary" id="btnEmpezar" style="margin-top:8px;">EMPEZAR SESIÓN</button>`
       }
     </div>
+
+    ${tocaDeload ? `
+    <div class="card" style="border-color:var(--accent2);">
+      <h2>Toca descarga</h2>
+      <p style="font-size:.88rem;">Llevas ${semanas} semanas seguidas. Esta semana: mismos ejercicios y días, <b>la mitad de las series</b> y <b>60-70% del peso</b>. Sin acercarte al fallo.</p>
+      <button class="btn btn-small" id="btnDeloadHecho">Descarga hecha</button>
+    </div>` : ""}
 
     <div class="card">
       <h2>Modo de semana</h2>
@@ -624,6 +662,13 @@ RENDERERS.hoy = function(){
         <b>${ultimoPeso? ultimoPeso.kg+" kg" : PERFIL.peso_inicial_kg+" kg (inicial)"}</b>
       </div>
       <div class="muted" style="font-size:.78rem;">${ultimoPeso? "Último pesaje: "+fmtFecha(ultimoPeso.fecha) : "Aún no has registrado ningún pesaje."}</div>
+      ${tocaPesaje ? `
+        <hr>
+        <p class="muted" style="font-size:.82rem;">Toca pesarte. En ayunas, después de mear.</p>
+        <div class="row">
+          <input type="number" id="pesoRapido" placeholder="kg" step="0.1" style="flex:1;">
+          <button class="btn btn-primary btn-small" id="btnPesoRapido">Guardar</button>
+        </div>` : ""}
     </div>
 
     <button class="rescate" id="btnRescate">😩 No tengo ganas</button>
@@ -638,6 +683,25 @@ RENDERERS.hoy = function(){
       saveState();
       RENDERERS.hoy();
     });
+  });
+
+  const btnPesoRapido = document.getElementById("btnPesoRapido");
+  if(btnPesoRapido) btnPesoRapido.addEventListener("click", ()=>{
+    const kg = parseFloat(document.getElementById("pesoRapido").value);
+    if(!kg) return;
+    state.pesoLog = state.pesoLog.filter(p=>p.fecha!==hoyISO);
+    state.pesoLog.push({fecha:hoyISO, kg});
+    state.pesoLog.sort((a,b)=> a.fecha.localeCompare(b.fecha));
+    saveState();
+    RENDERERS.hoy();
+    toast("Peso guardado.");
+  });
+
+  const btnDeload = document.getElementById("btnDeloadHecho");
+  if(btnDeload) btnDeload.addEventListener("click", ()=>{
+    state.deload.ultimaFecha = hoyISO;
+    saveState();
+    RENDERERS.hoy();
   });
 
   document.getElementById("btnRescate").addEventListener("click", ()=>{
@@ -705,6 +769,8 @@ RENDERERS.sesion = function(){
       <span class="badge">${totalCompletos} de ${s.ejercicios.length} ejercicios</span>
     </div>
 
+    ${renderCalentamiento(lista[0])}
+
     ${lista.map((ex,i)=>renderEjercicio(ex,i)).join("")}
 
     <div class="card">
@@ -732,19 +798,54 @@ RENDERERS.sesion = function(){
   el.querySelectorAll(".btn-tecnica").forEach(b=>{
     b.addEventListener("click", ()=> showTecnica(b.dataset.ex));
   });
+
+  if(s.restFin && s.restFin > Date.now()) runRestTimer(s.restFin);
 };
+
+function pesoTrabajo(exId){
+  const sug = state.subirPeso[exId];
+  if(sug && typeof sug === "object" && sug.hasta) return sug.hasta;
+  const uv = ultimaVez(exId);
+  if(uv) return Math.max(...uv.series.map(s=>s.peso));
+  return null;
+}
+
+function renderCalentamiento(primerEx){
+  if(!primerEx) return "";
+  const trabajo = pesoTrabajo(primerEx.id);
+  const aprox = trabajo
+    ? [`Barra vacía o muy poco peso × 10`,
+       `${redondear(trabajo*0.5)} kg × 5`,
+       `${redondear(trabajo*0.75)} kg × 3`]
+    : CALENTAMIENTO.aproximacion;
+  return `
+  <details>
+    <summary>Calentamiento — no me lo salto</summary>
+    <div class="body">
+      <p style="font-size:.88rem;">${escapeHtml(CALENTAMIENTO.general)}</p>
+      <p style="font-size:.88rem;">Aproximación en <b>${escapeHtml(primerEx.nombre)}</b>${trabajo? ` (peso de trabajo ${trabajo} kg)`:""}:</p>
+      <ul style="font-size:.88rem;">${aprox.map(a=>`<li>${escapeHtml(a)}</li>`).join("")}</ul>
+      <p class="muted" style="font-size:.8rem;">${escapeHtml(CALENTAMIENTO.nota)}</p>
+    </div>
+  </details>`;
+}
 
 function renderEjercicio(ex, idx){
   const uv = ultimaVez(ex.id);
   const uvTxt = uv ? uv.series.map(st=>`${st.peso}kg×${st.repes}`).join(", ") : "Sin registros previos";
-  const listo = state.subirPeso[ex.id];
+  const sug = state.subirPeso[ex.id];
+  const avisoSubir = sug
+    ? (typeof sug === "object" && sug.hasta
+        ? `<span class="badge on">Sube a ${sug.hasta} kg</span>`
+        : `<span class="badge on">Sube peso</span>`)
+    : "";
   const completo = ex.sets.every(st=>st.done);
   return `
   <div class="card ${completo?'exdone':''}">
     <div class="row" style="justify-content:space-between;align-items:flex-start;">
       <div>
-        <div class="exname">${escapeHtml(ex.nombre)} ${listo?'<span class="badge on">Sube peso</span>':''}</div>
-        <div class="extarget">${ex.series} x ${escapeHtml(ex.repes)} · descanso ${Math.round(ex.descanso_seg/60*10)/10>=1? Math.floor(ex.descanso_seg/60)+"m":ex.descanso_seg+"s"}</div>
+        <div class="exname">${escapeHtml(ex.nombre)} ${avisoSubir}</div>
+        <div class="extarget">${ex.series} x ${escapeHtml(ex.repes)} · descanso ${fmtDescanso(ex.descanso_seg)}</div>
         <div class="exlast">Última vez: ${escapeHtml(uvTxt)}</div>
       </div>
       <button class="btn btn-small btn-ghost btn-tecnica" data-ex="${ex.id}">técnica</button>
@@ -793,25 +894,33 @@ function onSetCheck(e){
 
 let restInterval = null;
 function startRestTimer(seconds){
+  const fin = Date.now() + seconds*1000;
+  if(state.sesionActual){ state.sesionActual.restFin = fin; saveState(); }
+  runRestTimer(fin);
+}
+function runRestTimer(fin){
   clearInterval(restInterval);
-  let remaining = seconds;
   const box = document.getElementById("resttimer");
-  box.classList.add("show");
   function tick(){
-    const m = Math.floor(remaining/60), sec = remaining%60;
-    box.innerHTML = `Descanso: ${m}:${String(sec).padStart(2,"0")} <span style="text-decoration:underline;margin-left:10px;" id="skipRest">saltar</span>`;
-    const skip = document.getElementById("skipRest");
-    if(skip) skip.onclick = ()=>{ clearInterval(restInterval); box.classList.remove("show"); };
-    if(remaining<=0){
-      clearInterval(restInterval);
-      box.classList.remove("show");
+    const restante = Math.round((fin - Date.now())/1000);
+    if(restante<=0){
+      stopRestTimer();
       if(navigator.vibrate) navigator.vibrate([200,100,200]);
       return;
     }
-    remaining--;
+    const m = Math.floor(restante/60), sec = restante%60;
+    box.classList.add("show");
+    box.innerHTML = `Descanso: ${m}:${String(sec).padStart(2,"0")} <span style="text-decoration:underline;margin-left:10px;" id="skipRest">saltar</span>`;
+    const skip = document.getElementById("skipRest");
+    if(skip) skip.onclick = stopRestTimer;
   }
   tick();
   restInterval = setInterval(tick, 1000);
+}
+function stopRestTimer(){
+  clearInterval(restInterval);
+  document.getElementById("resttimer").classList.remove("show");
+  if(state.sesionActual){ state.sesionActual.restFin = null; saveState(); }
 }
 
 function showTecnica(exId){
@@ -835,30 +944,41 @@ function showTecnica(exId){
 function terminarSesion(){
   const s = state.sesionActual;
   const subenPeso = [];
+  let ejerciciosHechos = 0, seriesHechas = 0;
   s.ejercicios.forEach(ex=>{
     const setsGuardables = ex.sets.filter(st=>st.done && st.peso!=="" && st.repes!=="");
     if(setsGuardables.length===0) return;
+    ejerciciosHechos++;
+    seriesHechas += setsGuardables.length;
+    const series = setsGuardables.map(st=>({peso:Number(st.peso), repes:Number(st.repes)}));
     if(!state.historial[ex.id]) state.historial[ex.id] = [];
-    state.historial[ex.id].push({
-      fecha: s.fecha,
-      series: setsGuardables.map(st=>({peso:Number(st.peso), repes:Number(st.repes)}))
-    });
+    state.historial[ex.id].push({fecha:s.fecha, series});
     const {high} = parseRepRange(ex.repes);
-    const todasAlTope = setsGuardables.length>=ex.series && setsGuardables.every(st=>Number(st.repes)>=high);
+    const todasAlTope = setsGuardables.length>=ex.series && series.every(st=>st.repes>=high);
     if(todasAlTope){
-      state.subirPeso[ex.id] = true;
-      subenPeso.push(ex.nombre);
+      const pesoUsado = Math.max(...series.map(st=>st.peso));
+      const hasta = pesoUsado + incrementoPara(ex.id, ex.tipo);
+      state.subirPeso[ex.id] = {desde:pesoUsado, hasta};
+      subenPeso.push(ex.nombre+" → "+hasta+" kg");
     } else {
-      state.subirPeso[ex.id] = false;
+      state.subirPeso[ex.id] = null;
     }
   });
+  if(ejerciciosHechos){
+    state.sesionesHechas.push({
+      fecha:s.fecha, nombre:s.nombre, diaKey:s.diaKey,
+      ejercicios:ejerciciosHechos, series:seriesHechas, rapida:!!s.modoRapido
+    });
+  }
   state.sesionActual = null;
   saveState();
   switchScreen("hoy");
   if(subenPeso.length){
-    toast("Sesión guardada. Sube el peso en: "+subenPeso.join(", "), 4500);
-  }else{
+    toast("Sesión guardada. Sube el peso: "+subenPeso.join(" · "), 5000);
+  }else if(ejerciciosHechos){
     toast("Sesión guardada. Buen trabajo.");
+  }else{
+    toast("Sesión cerrada sin series registradas.");
   }
 }
 
@@ -939,6 +1059,21 @@ RENDERERS.progreso = function(){
           <thead><tr><th>Fecha</th><th>Brazo</th><th>Pecho</th><th>Muslo</th><th>Gemelo</th><th>Antebr.</th></tr></thead>
           <tbody>${state.medidas.slice().reverse().map(m=>`<tr><td>${fmtFecha(m.fecha)}</td><td>${m.brazo||"-"}</td><td>${m.pecho||"-"}</td><td>${m.muslo||"-"}</td><td>${m.gemelo||"-"}</td><td>${m.antebrazo||"-"}</td></tr>`).join("")}</tbody>
         </table>` : ""}
+    </div>
+
+    <div class="card">
+      <h2>Sesiones hechas</h2>
+      ${state.sesionesHechas.length ? `
+        <p class="muted" style="font-size:.8rem;">${state.sesionesHechas.length} sesiones registradas. Solo el registro, sin rachas ni culpas.</p>
+        <table><tbody>
+          ${state.sesionesHechas.slice(-12).reverse().map(ses=>`
+            <tr>
+              <td style="white-space:nowrap;">${fmtFecha(ses.fecha)}</td>
+              <td>${escapeHtml(ses.nombre)}${ses.rapida? ' <span class="muted">(rápida)</span>':''}</td>
+              <td class="muted">${ses.series} series</td>
+            </tr>`).join("")}
+        </tbody></table>`
+        : `<p class="muted">Aún no has terminado ninguna sesión.</p>`}
     </div>
 
     <div class="card">
@@ -1040,9 +1175,9 @@ function svgLineChart(points, opts){
     <path d="${path}" fill="none" stroke="#ff5a36" stroke-width="2"/>
     ${dots}
   </svg>
-  <div class="row" style="justify-content:space-between;font-size:.72rem;" class="muted">
-    <span class="muted">${fmtFecha(points[0].fecha)}</span>
-    <span class="muted">${fmtFecha(points[points.length-1].fecha)}</span>
+  <div class="row muted" style="justify-content:space-between;font-size:.72rem;">
+    <span>${fmtFecha(points[0].fecha)} · ${points[0].v}</span>
+    <span>${fmtFecha(points[points.length-1].fecha)} · ${points[points.length-1].v}</span>
   </div>`;
 }
 

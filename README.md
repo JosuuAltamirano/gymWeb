@@ -27,9 +27,9 @@ A partir de ahí se abre como una app normal, en pantalla completa, tema oscuro,
 
 ## Pantallas
 
-1. **HOY** — qué toca hoy, botón para empezar sesión, selector NORMAL/OBRA, peso actual, cuenta atrás hasta el 22 de septiembre.
-2. **SESIÓN** — ejercicios del día con últimas cargas, series/repes a rellenar, temporizador de descanso automático, técnica de cada ejercicio, modo rápido.
-3. **PROGRESO** — gráfica de peso corporal, récords personales, gráfica de carga por ejercicio, medidas, foto mensual, copia de seguridad (exportar/importar JSON).
+1. **HOY** — qué toca hoy, horario del gym del día, botón para empezar sesión, selector NORMAL/OBRA, peso actual con pesaje semanal en línea, aviso de semana de descarga, cuenta atrás hasta el 22 de septiembre.
+2. **SESIÓN** — calentamiento con los pesos de aproximación ya calculados, ejercicios del día con últimas cargas, series/repes a rellenar, temporizador de descanso automático (aguanta si recargas la página), técnica de cada ejercicio, modo rápido.
+3. **PROGRESO** — gráfica de peso corporal, récords personales, gráfica de carga por ejercicio, historial de sesiones, medidas, foto mensual, copia de seguridad (exportar/importar JSON).
 4. **COMIDA** — contador de proteína del día con botones rápidos, menús guardados, lista de la compra con botón de copiar para WhatsApp.
 5. **GUÍA** — técnica, progresión, suplementos, sueño, alcohol, qué hacer cuando algo falla, qué esperar mes a mes, lo que no hago.
 6. **CHECK** — checklist de la noche anterior a un día de gym.
