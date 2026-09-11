@@ -1,0 +1,15 @@
+{
+  "name": "Mi Gym — Rutina y Progreso",
+  "short_name": "Mi Gym",
+  "description": "Rutina, sesiones, progreso y comida. Para uso propio en el gym.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1013",
+  "theme_color": "#0e1013",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
