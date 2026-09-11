@@ -639,6 +639,7 @@ RENDERERS.hoy = function(){
         ? `<p class="frase">"${randFrase()}"</p>`
         : `<button class="btn btn-primary" id="btnEmpezar" style="margin-top:8px;">EMPEZAR SESIÓN</button>`
       }
+      <button class="btn btn-ghost btn-small" id="btnOtraSesion" style="margin-top:8px;width:100%;">Entrenar otra sesión</button>
     </div>
 
     ${tocaDeload ? `
@@ -704,6 +705,31 @@ RENDERERS.hoy = function(){
     RENDERERS.hoy();
   });
 
+  document.getElementById("btnOtraSesion").addEventListener("click", ()=>{
+    const disponibles = DIAS_ORDEN.filter(dk=>{
+      const d = getRutinaDia(state.modo, dk);
+      return d && d.ejercicios && d.ejercicios.length;
+    });
+    showModal(`
+      <h2>Entrenar otra sesión</h2>
+      <p class="muted" style="font-size:.85rem;">Para cuando el domingo no cuadra o recuperas un día. No pasa nada.</p>
+      ${disponibles.map(dk=>{
+        const d = getRutinaDia(state.modo, dk);
+        return `<button class="btn" data-sesion="${dk}" style="margin-bottom:8px;justify-content:flex-start;">
+          ${escapeHtml(d.nombre)} <span class="muted" style="font-weight:400;">&nbsp;· ${DIAS_LABEL[dk].toLowerCase()}</span>
+        </button>`;
+      }).join("")}
+      <button class="btn btn-ghost" id="mCerrar">Cerrar</button>
+    `);
+    document.getElementById("mCerrar").addEventListener("click", closeModal);
+    document.querySelectorAll("[data-sesion]").forEach(b=>{
+      b.addEventListener("click", ()=>{
+        closeModal();
+        iniciarSesion(b.dataset.sesion, false);
+      });
+    });
+  });
+
   document.getElementById("btnRescate").addEventListener("click", ()=>{
     showModal(`
       <h2>Oye.</h2>
@@ -733,11 +759,46 @@ function iniciarSesion(diaKey, modoRapido){
     ejercicios: dia.ejercicios.map(ex=>({
       id:ex.id, nombre:ex.nombre, series:ex.series, repes:ex.repes,
       descanso_seg:ex.descanso_seg||90, tipo:ex.tipo,
-      sets: Array.from({length:ex.series}, ()=>({peso:"",repes:"",done:false}))
+      sets: sugerenciaSets(ex)
     }))
   };
   saveState();
+  pedirWakeLock();
   switchScreen("sesion");
+}
+
+// Que no se apague la pantalla en mitad de la serie.
+let wakeLock = null;
+function pedirWakeLock(){
+  if(!("wakeLock" in navigator) || wakeLock) return;
+  navigator.wakeLock.request("screen").then(wl=>{
+    wakeLock = wl;
+    wl.addEventListener("release", ()=>{ wakeLock = null; });
+  }).catch(()=>{});
+}
+function soltarWakeLock(){
+  if(wakeLock){ wakeLock.release().catch(()=>{}); wakeLock = null; }
+}
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState==="visible" && state.sesionActual) pedirWakeLock();
+});
+
+// Sugerencia por serie según doble progresión: si toca subir peso, voy al tope
+// bajo del rango; si no, repito peso e intento una repetición más que la última vez.
+function sugerenciaSets(ex){
+  const uv = ultimaVez(ex.id);
+  const sug = state.subirPeso[ex.id];
+  const {low, high} = parseRepRange(ex.repes);
+  return Array.from({length:ex.series}, (_,i)=>{
+    let sugPeso = "", sugRepes = "";
+    if(sug && sug.hasta){
+      sugPeso = sug.hasta; sugRepes = low;
+    } else if(uv && uv.series.length){
+      const prev = uv.series[i] || uv.series[uv.series.length-1];
+      sugPeso = prev.peso; sugRepes = Math.min(prev.repes+1, high);
+    }
+    return {peso:"", repes:"", done:false, sugPeso, sugRepes};
+  });
 }
 
 function ultimaVez(exId){
@@ -769,6 +830,10 @@ RENDERERS.sesion = function(){
       <span class="badge">${totalCompletos} de ${s.ejercicios.length} ejercicios</span>
     </div>
 
+    ${s.fecha !== todayStr()
+      ? `<div class="card tight" style="border-color:var(--accent2);"><p class="muted" style="font-size:.82rem;margin:0;">Esta sesión la empezaste el ${fmtFecha(s.fecha)} y sigue abierta. Termínala o descártala abajo.</p></div>`
+      : ""}
+
     ${renderCalentamiento(lista[0])}
 
     ${lista.map((ex,i)=>renderEjercicio(ex,i)).join("")}
@@ -780,6 +845,7 @@ RENDERERS.sesion = function(){
     </div>
 
     <button class="btn btn-good" id="btnTerminar">TERMINAR SESIÓN</button>
+    <button class="btn btn-ghost btn-small btn-danger" id="btnDescartar" style="width:100%;margin-top:8px;">Descartar sesión</button>
   `;
 
   document.getElementById("btnRapido").addEventListener("click", ()=>{
@@ -788,6 +854,24 @@ RENDERERS.sesion = function(){
     RENDERERS.sesion();
   });
   document.getElementById("btnTerminar").addEventListener("click", terminarSesion);
+  document.getElementById("btnDescartar").addEventListener("click", ()=>{
+    showModal(`
+      <h2>¿Descartar la sesión?</h2>
+      <p class="muted">No se guarda nada de lo que has metido.</p>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn btn-ghost col" id="mCerrar">Seguir</button>
+        <button class="btn col btn-danger" id="mDescartar">Descartar</button>
+      </div>`, {center:true});
+    document.getElementById("mCerrar").addEventListener("click", closeModal);
+    document.getElementById("mDescartar").addEventListener("click", ()=>{
+      closeModal();
+      stopRestTimer();
+      state.sesionActual = null;
+      saveState();
+      soltarWakeLock();
+      switchScreen("hoy");
+    });
+  });
 
   el.querySelectorAll(".exset .chk").forEach(chk=>{
     chk.addEventListener("click", onSetCheck);
@@ -798,6 +882,8 @@ RENDERERS.sesion = function(){
   el.querySelectorAll(".btn-tecnica").forEach(b=>{
     b.addEventListener("click", ()=> showTecnica(b.dataset.ex));
   });
+  el.querySelectorAll("[data-addset]").forEach(b=> b.addEventListener("click", onAddSet));
+  el.querySelectorAll("[data-delset]").forEach(b=> b.addEventListener("click", onDelSet));
 
   if(s.restFin && s.restFin > Date.now()) runRestTimer(s.restFin);
 };
@@ -845,7 +931,9 @@ function renderEjercicio(ex, idx){
     <div class="row" style="justify-content:space-between;align-items:flex-start;">
       <div>
         <div class="exname">${escapeHtml(ex.nombre)} ${avisoSubir}</div>
-        <div class="extarget">${ex.series} x ${escapeHtml(ex.repes)} · descanso ${fmtDescanso(ex.descanso_seg)}</div>
+        <div class="extarget">${ex.sets.length} x ${escapeHtml(ex.repes)} · descanso ${fmtDescanso(ex.descanso_seg)}</div>
+        ${tipoEjercicio(ex.id, ex.tipo)==="punto_debil"
+          ? `<div style="font-size:.76rem;color:var(--accent2);">Punto débil — rango completo, sin rebote y sin prisa</div>` : ""}
         <div class="exlast">Última vez: ${escapeHtml(uvTxt)}</div>
       </div>
       <button class="btn btn-small btn-ghost btn-tecnica" data-ex="${ex.id}">técnica</button>
@@ -853,11 +941,15 @@ function renderEjercicio(ex, idx){
     ${ex.sets.map((st,si)=>`
       <div class="exset">
         <div class="lbl">#${si+1}</div>
-        <input type="number" inputmode="decimal" placeholder="kg" value="${st.peso}" data-peso data-ex="${idx}" data-set="${si}">
-        <input type="number" inputmode="numeric" placeholder="repes" value="${st.repes}" data-repes data-ex="${idx}" data-set="${si}">
+        <input type="number" inputmode="decimal" placeholder="${st.sugPeso!==""&&st.sugPeso!=null? st.sugPeso : "kg"}" value="${st.peso}" data-peso data-ex="${idx}" data-set="${si}">
+        <input type="number" inputmode="numeric" placeholder="${st.sugRepes!==""&&st.sugRepes!=null? st.sugRepes : "repes"}" value="${st.repes}" data-repes data-ex="${idx}" data-set="${si}">
         <button class="chk ${st.done?'on':''}" data-ex="${idx}" data-set="${si}">${st.done?'✓':'—'}</button>
       </div>
     `).join("")}
+    <div class="row" style="gap:6px;margin-top:2px;">
+      <button class="btn btn-small btn-ghost" data-addset="${idx}">+ serie</button>
+      ${ex.sets.length>1? `<button class="btn btn-small btn-ghost" data-delset="${idx}">− serie</button>`:""}
+    </div>
   </div>`;
 }
 
@@ -884,11 +976,32 @@ function onSetCheck(e){
   const setIdx = Number(e.target.dataset.set);
   const ex = lista[exIdx];
   const st = ex.sets[setIdx];
+  if(!st.done){
+    if(st.peso==="" && st.sugPeso!=="" && st.sugPeso!=null) st.peso = String(st.sugPeso);
+    if(st.repes==="" && st.sugRepes!=="" && st.sugRepes!=null) st.repes = String(st.sugRepes);
+  }
   st.done = !st.done;
   saveState();
   if(st.done){
     startRestTimer(ex.descanso_seg);
   }
+  RENDERERS.sesion();
+}
+
+function onAddSet(e){
+  const ex = currentEjercicios()[Number(e.target.dataset.addset)];
+  const ultima = ex.sets[ex.sets.length-1];
+  ex.sets.push({peso:"", repes:"", done:false,
+    sugPeso: ultima ? (ultima.peso || ultima.sugPeso) : "",
+    sugRepes: ultima ? (ultima.repes || ultima.sugRepes) : ""});
+  saveState();
+  RENDERERS.sesion();
+}
+
+function onDelSet(e){
+  const ex = currentEjercicios()[Number(e.target.dataset.delset)];
+  if(ex.sets.length>1) ex.sets.pop();
+  saveState();
   RENDERERS.sesion();
 }
 
@@ -943,6 +1056,8 @@ function showTecnica(exId){
 
 function terminarSesion(){
   const s = state.sesionActual;
+  stopRestTimer();
+  soltarWakeLock();
   const subenPeso = [];
   let ejerciciosHechos = 0, seriesHechas = 0;
   s.ejercicios.forEach(ex=>{
@@ -1015,11 +1130,23 @@ RENDERERS.progreso = function(){
     <div class="card">
       <h2>Peso corporal</h2>
       ${renderPesoChart()}
+      ${(()=>{
+        const u = state.pesoLog.length? state.pesoLog[state.pesoLog.length-1].kg : PERFIL.peso_inicial_kg;
+        const falta = (PERFIL.peso_objetivo_12_meses_kg - u).toFixed(1);
+        return `<div class="kpi" style="margin-top:6px;">
+          <span class="muted" style="font-size:.8rem;">Desde ${PERFIL.peso_inicial_kg} kg · objetivo ${PERFIL.peso_objetivo_12_meses_kg} kg</span>
+          <span class="muted" style="font-size:.8rem;">${falta>0? "faltan "+falta+" kg" : "objetivo cumplido"}</span>
+        </div>`;
+      })()}
       <div class="row" style="margin-top:8px;">
         <input type="date" id="pesoFecha" value="${hoy}" style="flex:1;">
         <input type="number" id="pesoKg" placeholder="kg" step="0.1" style="flex:1;">
         <button class="btn btn-primary btn-small" id="btnAddPeso">Añadir</button>
       </div>
+      ${(()=>{
+        const a = avisoRitmoPeso();
+        return a? `<p style="margin-top:10px;font-size:.85rem;border-left:3px solid ${a.color};padding-left:8px;">${a.txt}</p>` : "";
+      })()}
     </div>
 
     ${mostrarFoto ? `
@@ -1163,6 +1290,12 @@ function svgLineChart(points, opts){
   const values = points.map(p=>p.v);
   let min = Math.min(...values), max = Math.max(...values);
   if(min===max){ min-=1; max+=1; }
+  // Sin esto, subir 100 g dibuja una cuesta enorme y engaña.
+  if(opts.minSpan && (max-min) < opts.minSpan){
+    const centro = (max+min)/2;
+    min = centro - opts.minSpan/2;
+    max = centro + opts.minSpan/2;
+  }
   const stepX = points.length>1 ? (w-2*pad)/(points.length-1) : 0;
   const coords = points.map((p,i)=>{
     const x = pad + i*stepX;
@@ -1183,7 +1316,29 @@ function svgLineChart(points, opts){
 
 function renderPesoChart(){
   const pts = state.pesoLog.map(p=>({v:p.kg, fecha:p.fecha}));
-  return svgLineChart(pts);
+  return svgLineChart(pts, {minSpan:4});
+}
+
+// La báscula manda: objetivo +0,3 a 0,5 kg por semana.
+function avisoRitmoPeso(){
+  const log = state.pesoLog;
+  if(log.length < 2) return null;
+  const ultimo = log[log.length-1];
+  let ref = null;
+  for(let i=log.length-2; i>=0; i--){
+    if(daysBetween(log[i].fecha, ultimo.fecha) >= 12){ ref = log[i]; break; }
+  }
+  if(!ref) return null;
+  const dias = daysBetween(ref.fecha, ultimo.fecha);
+  const dif = ultimo.kg - ref.kg;
+  const porSemana = dif/(dias/7);
+  if(dif < 0.3){
+    return {color:"var(--accent)", txt:`Llevas ${Math.round(dias/7)} semanas y has subido ${dif.toFixed(1)} kg. <b>Come más:</b> 300 kcal al día — puñado de frutos secos + vaso de leche + chorro de aceite.`};
+  }
+  if(porSemana > 1){
+    return {color:"var(--accent2)", txt:`Estás subiendo ${porSemana.toFixed(1)} kg por semana. Frena un poco o cogerás grasa de más.`};
+  }
+  return {color:"var(--good)", txt:`${porSemana.toFixed(1)} kg por semana. Vas en el ritmo bueno (0,3-0,5). Sigue comiendo igual.`};
 }
 function renderEjercicioChart(exId){
   const h = state.historial[exId]||[];
