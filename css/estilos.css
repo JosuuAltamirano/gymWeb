@@ -202,12 +202,24 @@ letter-spacing:-.03em;display:block;}
 color:var(--dim);font-weight:600;margin-top:3px;display:block;}
 .cifra .d{font-size:.68rem;color:var(--dim);font-variant-numeric:tabular-nums;}
 
-.porque{background:none;border:none;color:var(--dim);font-family:inherit;cursor:pointer;
-font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;font-weight:600;
-padding:6px 0;text-align:left;text-decoration:underline;text-underline-offset:3px;}
+.porque{background:none;border:none;color:var(--faint);font-family:inherit;cursor:pointer;
+font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+padding:8px 0;text-align:left;}
+.porque:active{color:var(--ink);}
 
 .regla{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;font-size:.88rem;
 align-items:baseline;}
 .regla dt{color:var(--dim);font-size:.64rem;text-transform:uppercase;
 letter-spacing:.12em;font-weight:600;white-space:nowrap;}
 .regla dd{margin:0;font-variant-numeric:tabular-nums;}
+
+/* Foco visible: con teclado o lector de pantalla hay que saber dónde estás. */
+:focus-visible{outline:2px solid var(--volt);outline-offset:2px;border-radius:8px;}
+.btn:focus-visible,.chk:focus-visible{outline-offset:3px;}
+
+/* Respetar a quien tiene desactivadas las animaciones del sistema. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important;}
+}
+
+textarea{min-height:72px;resize:vertical;line-height:1.45;font-size:.95rem;}

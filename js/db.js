@@ -247,6 +247,58 @@ const Datos = {
     });
   },
 
+  /* ---------- Correcciones ----------
+     Apuntar 400 kg en vez de 40 pasa. Sin esto, ese error queda para
+     siempre en el récord, en el volumen y en las gráficas. */
+
+  actualizarSerie(id, cambios){
+    const fila = this.series.find(s=> s.id === id);
+    if(!fila) return;
+    Object.assign(fila, cambios);
+    this.escribir("series", fila);
+  },
+
+  borrarSerie(id){
+    this.series = this.series.filter(s=> s.id !== id);
+    this.borrar("series", id);
+  },
+
+  actualizarSesion(id, cambios){
+    const fila = this.sesiones.find(s=> s.id === id);
+    if(!fila) return;
+    Object.assign(fila, cambios);
+    this.escribir("sesiones", fila);
+  },
+
+  // Borrar una sesión se lleva sus series: si no, quedan filas huérfanas.
+  borrarSesion(id){
+    this.series.filter(s=> s.sesionId === id).forEach(s=> this.borrar("series", s.id));
+    this.series = this.series.filter(s=> s.sesionId !== id);
+    this.sesiones = this.sesiones.filter(s=> s.id !== id);
+    this.borrar("sesiones", id);
+  },
+
+  borrarPesaje(fecha){
+    this.pesajes = this.pesajes.filter(p=> p.fecha !== fecha);
+    this.borrar("pesajes", fecha);
+  },
+
+  borrarMedida(fecha){
+    this.medidas = this.medidas.filter(m=> m.fecha !== fecha);
+    this.borrar("medidas", fecha);
+  },
+
+  // Recalcula el resumen de una sesión tras editarla.
+  recalcularSesion(id){
+    const series = this.series.filter(s=> s.sesionId === id);
+    const ejercicios = new Set(series.map(s=> s.ejercicioId)).size;
+    this.actualizarSesion(id, {
+      series: series.length,
+      ejercicios,
+      volumen: Math.round(series.reduce((t,s)=> t + s.peso*s.repes, 0))
+    });
+  },
+
   añadirComida(comida){
     comida.id = nuevoId();
     this.comidas.push(comida);

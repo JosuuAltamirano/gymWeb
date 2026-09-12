@@ -75,8 +75,8 @@ A partir de ahí se abre como una app normal, en pantalla completa, tema oscuro,
 1. **HOY** — qué toca hoy, horario del gym del día, botón para empezar sesión, opción de entrenar otra sesión (para cuando el domingo no cuadra o recuperas un día), selector NORMAL/OBRA, peso actual con pesaje semanal en línea, proteína del día de un vistazo, aviso de semana de descarga y, por la noche, el checklist de mañana si al día siguiente toca gym.
 
    Antes del 22 de septiembre muestra la cuenta atrás y el calendario de arranque, pero **funcionando**: puedes marcar cada hito, registrar el peso inicial, marcar la foto del día 1 y hacer las sesiones suaves del 15 y el 16.
-2. **SESIÓN** — calentamiento con los pesos de aproximación ya calculados, cada serie pre-sugerida según la doble progresión (un toque al check y queda registrada), últimas cargas a la vista, tiempo que llevas dentro, temporizador de descanso automático (aguanta si recargas la página), técnica de cada ejercicio, marca de puntos débiles, añadir/quitar series, modo rápido (avisando de qué se queda fuera) y descartar sesión. La pantalla no se apaga mientras entrenas.
-3. **PROGRESO** — gráfica de peso corporal con objetivo y aviso automático de "come más" si en 2 semanas no subes, récords personales, gráfica de carga por ejercicio, historial de sesiones, medidas, foto mensual, copia de seguridad (exportar/importar JSON).
+2. **SESIÓN** — calentamiento con los pesos de aproximación ya calculados, cada serie pre-sugerida según la doble progresión (un toque al check y queda registrada), últimas cargas a la vista, tiempo que llevas dentro, temporizador de descanso automático (aguanta si recargas la página), técnica de cada ejercicio, marca de puntos débiles, añadir/quitar series, **cambiar o saltar un ejercicio** (gym lleno, algo que duele), **nota de la sesión**, modo rápido (avisando de qué se queda fuera) y descartar sesión. La pantalla no se apaga mientras entrenas.
+3. **PROGRESO** — resumen (sesiones, media semanal, carga movida, ritmo real de peso), gráfica de peso corporal con objetivo y aviso automático de "come más" si en 2 semanas no subes, volumen por semana, récords personales, carga por ejercicio, historial de sesiones **abrible y corregible**, medidas con gráfica de evolución, foto mensual, recordatorios al calendario y copia de seguridad.
 4. **COMIDA** — contador de proteína del día con botones rápidos, menús guardados, lista de la compra con botón de copiar para WhatsApp.
 5. **GUÍA** — técnica, progresión, suplementos, sueño, alcohol, qué hacer cuando algo falla, qué esperar mes a mes, lo que no hago.
 6. **CHECK** — checklist de la noche anterior a un día de gym.
@@ -94,6 +94,14 @@ Todo se guarda solo, en el móvil, cada vez que tocas algo. No hay cuentas ni se
 3. **Exportar/importar `.json`** desde PROGRESO — la red de seguridad si cambias de móvil o borras los datos del navegador. La web te recuerda hacerlo si hace más de un mes.
 
 Además pide al navegador almacenamiento persistente (`navigator.storage.persist()`), que evita que el sistema borre los datos para hacer sitio.
+
+## Corregir errores
+
+Apuntar 400 kg en vez de 40 pasa, y sin poder arreglarlo ese error envenena el récord, el volumen y las gráficas para siempre. Desde PROGRESO se abre cualquier sesión pasada para ver lo que hiciste, corregir pesos y repeticiones, borrar una serie suelta o la sesión entera (que se lleva sus series, sin dejar huérfanas) y dejar una nota. Los pesajes también se pueden borrar.
+
+## Semana de descarga
+
+A las 8 semanas la web avisa, y puede **aplicarla**: durante 7 días las sesiones vienen con la mitad de las series y el peso al 65%, y no se sube carga aunque llegues al tope del rango — una semana suave no es motivo para progresar.
 
 ## Avisos
 

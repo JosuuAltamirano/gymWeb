@@ -161,6 +161,7 @@ RENDERERS.hoy = function(){
   const semanas = Math.floor(diasDesdeInicio/7);
   const tocaDeload = state.modo!=="obra" && semanas>=8 &&
     (!state.deload.ultimaFecha || daysBetween(state.deload.ultimaFecha, hoyISO) >= 56);
+  const enDescarga = descargaActiva();
 
   el.innerHTML = `
     <div class="card hero">
@@ -183,11 +184,19 @@ RENDERERS.hoy = function(){
       <button class="btn btn-ghost btn-small" id="btnOtraSesion" style="margin-top:8px;width:100%;">Entrenar otra sesión</button>
     </div>
 
-    ${tocaDeload ? `
+    ${enDescarga ? `
+    <div class="card" style="border-color:var(--accent2);">
+      <h2>Semana de descarga</h2>
+      <p style="font-size:.88rem;">Las sesiones vienen con <b>la mitad de las series</b> y el peso al <b>65%</b>. Sin acercarte al fallo: esto es dejar que el cuerpo se ponga al día.</p>
+      <button class="btn btn-ghost btn-small" id="btnDeloadFin">Terminar la descarga</button>
+    </div>` : tocaDeload ? `
     <div class="card" style="border-color:var(--accent2);">
       <h2>Toca descarga</h2>
       <p style="font-size:.88rem;">Llevas ${semanas} semanas seguidas. Esta semana: mismos ejercicios y días, <b>la mitad de las series</b> y <b>60-70% del peso</b>. Sin acercarte al fallo.</p>
-      <button class="btn btn-small" id="btnDeloadHecho">Descarga hecha</button>
+      <div class="row">
+        <button class="btn btn-small col" id="btnDeloadAplicar">Aplicar esta semana</button>
+        <button class="btn btn-ghost btn-small col" id="btnDeloadHecho">Ya la hice</button>
+      </div>
     </div>` : ""}
 
     <div class="card">
@@ -289,6 +298,23 @@ function engancharHoy(hoyISO, diaKey, esDescanso){
   const btnDeload = document.getElementById("btnDeloadHecho");
   if(btnDeload) btnDeload.addEventListener("click", ()=>{
     state.deload.ultimaFecha = hoyISO;
+    state.deload.activaDesde = null;
+    saveState();
+    RENDERERS.hoy();
+  });
+
+  const btnAplicar = document.getElementById("btnDeloadAplicar");
+  if(btnAplicar) btnAplicar.addEventListener("click", ()=>{
+    state.deload.activaDesde = hoyISO;
+    saveState();
+    RENDERERS.hoy();
+    toast("Descarga activada: mitad de series y 65% del peso durante 7 días.", 5000);
+  });
+
+  const btnFin = document.getElementById("btnDeloadFin");
+  if(btnFin) btnFin.addEventListener("click", ()=>{
+    state.deload.ultimaFecha = hoyISO;
+    state.deload.activaDesde = null;
     saveState();
     RENDERERS.hoy();
   });
@@ -394,11 +420,16 @@ function arrancarSesion(diaKey, modoRapido){
     diaKey, nombre: dia.nombre, modo: state.modo,
     modoRapido: !!modoRapido,
     inicio: Date.now(),
-    ejercicios: dia.ejercicios.map(ex=>({
-      id:ex.id, nombre:ex.nombre, series:ex.series, repes:ex.repes,
-      descanso_seg:ex.descanso_seg||90, tipo:ex.tipo,
-      sets: sugerenciaSets(ex)
-    }))
+    descarga: descargaActiva(),
+    ejercicios: dia.ejercicios.map(ex=>{
+      // En descarga: la mitad de las series, redondeando hacia arriba.
+      const series = descargaActiva() ? Math.max(1, Math.ceil(ex.series/2)) : ex.series;
+      return {
+        id:ex.id, nombre:ex.nombre, series, repes:ex.repes,
+        descanso_seg:ex.descanso_seg||90, tipo:ex.tipo,
+        sets: sugerenciaSets({...ex, series})
+      };
+    })
   };
   saveState();
   pedirWakeLock();
@@ -421,6 +452,12 @@ document.addEventListener("visibilitychange", ()=>{
   if(document.visibilityState==="visible" && state.sesionActual) pedirWakeLock();
 });
 
+// La descarga dura una semana desde que se activa.
+function descargaActiva(){
+  const desde = state.deload.activaDesde;
+  return !!desde && daysBetween(desde, todayStr()) < 7;
+}
+
 // Sugerencia por serie según doble progresión: si toca subir peso, voy al tope
 // bajo del rango; si no, repito peso e intento una repetición más que la última vez.
 function sugerenciaSets(ex){
@@ -434,6 +471,10 @@ function sugerenciaSets(ex){
     } else if(uv && uv.series.length){
       const prev = uv.series[i] || uv.series[uv.series.length-1];
       sugPeso = prev.peso; sugRepes = Math.min(prev.repes+1, high);
+    }
+    if(descargaActiva() && sugPeso !== ""){
+      sugPeso = redondear(sugPeso*0.65);
+      sugRepes = low;
     }
     return {peso:"", repes:"", done:false, sugPeso, sugRepes};
   });
@@ -475,7 +516,7 @@ RENDERERS.sesion = function(){
           <div class="eyebrow">${DIAS_LABEL[s.diaKey]} · <span id="tiempoSesion">${textoTiempoSesion()}</span></div>
           <h1 style="font-size:1.45rem;margin-top:4px;">${escapeHtml(s.nombre)}</h1>
         </div>
-        <span class="badge">${totalCompletos}/${s.ejercicios.length}</span>
+        <span class="badge${s.descarga? " on":""}">${s.descarga? "Descarga · " : ""}${totalCompletos}/${s.ejercicios.length}</span>
       </div>
       <div class="progress" style="margin-top:14px;">
         <div style="width:${Math.round(totalCompletos/s.ejercicios.length*100)}%;"></div>
@@ -500,6 +541,13 @@ RENDERERS.sesion = function(){
         if(!fuera.length) return "";
         return `<p style="font-size:.8rem;color:var(--accent2);margin:8px 0 0 0;">Deja fuera ${fuera.map(e=>escapeHtml(e.nombre)).join(" y ")}. Si te queda un minuto, mete aunque sean 2 series: es justo lo que más te cuesta.</p>`;
       })()}
+    </div>
+
+    <div class="card">
+      <div class="field" style="margin:0;">
+        <label for="notaEnCurso">Nota de hoy</label>
+        <textarea id="notaEnCurso" rows="2" placeholder="Molestias, cambios, cómo te has visto...">${escapeHtml(s.nota||"")}</textarea>
+      </div>
     </div>
 
     <button class="btn btn-good" id="btnTerminar">TERMINAR SESIÓN</button>
@@ -544,6 +592,17 @@ RENDERERS.sesion = function(){
   el.querySelectorAll("[data-delset]").forEach(b=> b.addEventListener("click", onDelSet));
   el.querySelectorAll("[data-porque]").forEach(b=>{
     b.addEventListener("click", ()=> explicarSugerencia(currentEjercicios()[Number(b.dataset.porque)]));
+  });
+  el.querySelectorAll("[data-cambiar]").forEach(b=>{
+    b.addEventListener("click", ()=> cambiarEjercicio(Number(b.dataset.cambiar)));
+  });
+  el.querySelectorAll("[data-saltar]").forEach(b=>{
+    b.addEventListener("click", ()=> saltarEjercicio(Number(b.dataset.saltar)));
+  });
+  const nota = document.getElementById("notaEnCurso");
+  if(nota) nota.addEventListener("input", ()=>{
+    state.sesionActual.nota = nota.value;
+    saveState();
   });
 
   if(s.restFin && s.restFin > Date.now()) runRestTimer(s.restFin);
@@ -599,14 +658,19 @@ function renderEjercicio(ex, idx){
       </div>
       <button class="btn btn-small btn-ghost btn-tecnica" data-ex="${ex.id}">técnica</button>
     </div>
-    ${ex.sets[0] && ex.sets[0].sugPeso!=="" && ex.sets[0].sugPeso!=null
-      ? `<button class="porque" data-porque="${idx}">por qué este peso</button>` : ""}
+    <div class="row" style="gap:16px;align-items:center;">
+      ${ex.sets[0] && ex.sets[0].sugPeso!=="" && ex.sets[0].sugPeso!=null
+        ? `<button class="porque" data-porque="${idx}">por qué este peso</button>` : ""}
+      <button class="porque" data-cambiar="${idx}">cambiar</button>
+      <button class="porque" data-saltar="${idx}">saltar</button>
+    </div>
     ${ex.sets.map((st,si)=>`
       <div class="exset">
         <div class="lbl">#${si+1}</div>
         <input type="number" inputmode="decimal" placeholder="${st.sugPeso!==""&&st.sugPeso!=null? st.sugPeso : "kg"}" value="${st.peso}" data-peso data-ex="${idx}" data-set="${si}">
         <input type="number" inputmode="numeric" placeholder="${st.sugRepes!==""&&st.sugRepes!=null? st.sugRepes : "repes"}" value="${st.repes}" data-repes data-ex="${idx}" data-set="${si}">
-        <button class="chk ${st.done?'on':''}" data-ex="${idx}" data-set="${si}">${st.done?'✓':'—'}</button>
+        <button class="chk ${st.done?'on':''}" data-ex="${idx}" data-set="${si}"
+          aria-pressed="${st.done}" aria-label="Serie ${si+1} de ${escapeHtml(ex.nombre)}">${st.done?'✓':'—'}</button>
       </div>
     `).join("")}
     <div class="row" style="gap:6px;margin-top:2px;">
@@ -701,6 +765,58 @@ function stopRestTimer(){
 
 /* La sugerencia no es magia: esto enseña la regla aplicada y los datos
    concretos de los que sale, para poder discutirla o ignorarla con criterio. */
+/* "El gym está lleno" y "me duele X" están en sus notas: la web tiene que
+   dejar cambiar el ejercicio o saltarlo, no obligar a seguir el guion. */
+function ejerciciosDisponibles(){
+  const vistos = new Map();
+  [RUTINA_NORMAL, RUTINA_OBRA].forEach(rutina=>{
+    DIAS_ORDEN.forEach(dk=>{
+      const dia = rutina.dias[dk];
+      if(!dia || !dia.ejercicios) return;
+      dia.ejercicios.forEach(e=>{ if(!vistos.has(e.id)) vistos.set(e.id, e.nombre); });
+    });
+  });
+  return [...vistos.entries()].map(([id,nombre])=>({id,nombre}))
+    .sort((a,b)=> a.nombre.localeCompare(b.nombre,"es"));
+}
+
+function cambiarEjercicio(idx){
+  const actual = state.sesionActual.ejercicios[idx];
+  showModal(`
+    <h2>Cambiar ejercicio</h2>
+    <p class="muted" style="font-size:.85rem;">
+      En vez de ${escapeHtml(actual.nombre)}. Se mantienen las series y el rango.
+    </p>
+    ${ejerciciosDisponibles().filter(e=> e.id !== actual.id).map(e=>
+      `<button class="btn" data-nuevo="${e.id}" style="justify-content:flex-start;margin-bottom:8px;">${escapeHtml(e.nombre)}</button>`
+    ).join("")}
+    <button class="btn btn-ghost" id="mCerrar">Cerrar</button>
+  `);
+  document.getElementById("mCerrar").addEventListener("click", closeModal);
+  document.querySelectorAll("[data-nuevo]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const nuevo = ejerciciosDisponibles().find(e=> e.id === b.dataset.nuevo);
+      actual.id = nuevo.id;
+      actual.nombre = nuevo.nombre;
+      actual.tipo = tipoEjercicio(nuevo.id);
+      // Las sugerencias eran del ejercicio anterior: se recalculan.
+      actual.sets = sugerenciaSets({id:actual.id, series:actual.sets.length, repes:actual.repes});
+      saveState();
+      closeModal();
+      RENDERERS.sesion();
+      toast("Cambiado a "+nuevo.nombre+".");
+    });
+  });
+}
+
+function saltarEjercicio(idx){
+  const ex = state.sesionActual.ejercicios[idx];
+  state.sesionActual.ejercicios.splice(idx, 1);
+  saveState();
+  RENDERERS.sesion();
+  toast(ex.nombre+" saltado. No pasa nada.");
+}
+
 function explicarSugerencia(ex){
   const uv = ultimaVez(ex.id);
   const sug = state.subirPeso[ex.id];
@@ -758,7 +874,8 @@ function terminarSesion(){
     series.forEach(st=> volumen += st.peso*st.repes);
     porEjercicio.push({ejercicioId:ex.id, series});
     const {high} = parseRepRange(ex.repes);
-    const todasAlTope = setsGuardables.length>=ex.series && series.every(st=>st.repes>=high);
+    const todasAlTope = !s.descarga &&
+      setsGuardables.length>=ex.series && series.every(st=>st.repes>=high);
     if(todasAlTope){
       const pesoUsado = Math.max(...series.map(st=>st.peso));
       const hasta = pesoUsado + incrementoPara(ex.id, ex.tipo);
@@ -773,6 +890,7 @@ function terminarSesion(){
     Datos.registrarSesion({
       fecha:s.fecha, nombre:s.nombre, diaKey:s.diaKey, modo:s.modo,
       ejercicios:ejerciciosHechos, series:seriesHechas, rapida:!!s.modoRapido,
+      nota: (s.nota||"").trim(),
       volumen: Math.round(volumen),
       minutos: s.inicio ? Math.round((Date.now()-s.inicio)/60000) : null
     }, porEjercicio);
@@ -834,6 +952,18 @@ RENDERERS.progreso = function(){
         <div><label>Peso (kg)</label><input type="number" id="pesoKg" placeholder="0,0" step="0.1" inputmode="decimal"></div>
       </div>
       <button class="btn btn-primary" id="btnAddPeso" style="margin-top:10px;">Añadir pesaje</button>
+      ${Datos.pesajes.length ? `
+        <details style="background:none;padding:0;margin:14px 0 0;border:none;">
+          <summary style="font-size:.68rem;">Corregir pesajes</summary>
+          <div class="body">
+            ${Datos.pesajes.slice(-8).reverse().map(p=>`
+              <div class="row" style="justify-content:space-between;align-items:center;">
+                <span style="font-variant-numeric:tabular-nums;">${fmtFecha(p.fecha)} · ${p.kg} kg</span>
+                <button class="item-x" data-borrar-pesaje="${p.fecha}" aria-label="Borrar el pesaje del ${fmtFecha(p.fecha)}">✕</button>
+              </div>`).join("")}
+            <p class="muted" style="font-size:.78rem;margin-top:8px;">Volver a guardar la misma fecha la sobrescribe.</p>
+          </div>
+        </details>` : ""}
       ${(()=>{
         const a = avisoRitmoPeso();
         return a? `<p style="margin-top:10px;font-size:.85rem;border-left:3px solid ${a.color};padding-left:8px;">${a.txt}</p>` : "";
@@ -873,6 +1003,18 @@ RENDERERS.progreso = function(){
         <input type="number" id="mAntebrazo" placeholder="Antebrazo cm">
       </div>
       <button class="btn btn-primary btn-small" id="btnAddMedidas">Guardar medidas</button>
+      ${Datos.medidas.length>1 ? `
+        <div style="margin-top:16px;">
+          <label for="selMedida">Ver evolución</label>
+          <select id="selMedida">
+            <option value="gemelo">Gemelo</option>
+            <option value="antebrazo">Antebrazo</option>
+            <option value="brazo">Brazo</option>
+            <option value="pecho">Pecho</option>
+            <option value="muslo">Muslo</option>
+          </select>
+          <div id="chartMedida" style="margin-top:10px;"></div>
+        </div>` : ""}
       ${Datos.medidas.length? `
         <table style="margin-top:10px;">
           <thead><tr><th>Fecha</th><th>Brazo</th><th>Pecho</th><th>Muslo</th><th>Gemelo</th><th>Antebr.</th></tr></thead>
@@ -884,11 +1026,12 @@ RENDERERS.progreso = function(){
       <h2>Sesiones hechas</h2>
       ${Datos.sesiones.length ? `
         <p class="muted" style="font-size:.8rem;">${Datos.sesiones.length} sesiones registradas. Solo el registro, sin rachas ni culpas.</p>
+        <p class="muted" style="font-size:.78rem;">Toca una para verla o corregirla.</p>
         <table><tbody>
           ${Datos.sesiones.slice(-12).reverse().map(ses=>`
-            <tr>
+            <tr data-sesion-id="${ses.id}" style="cursor:pointer;">
               <td style="white-space:nowrap;">${fmtFecha(ses.fecha)}</td>
-              <td>${escapeHtml(ses.nombre)}${ses.rapida? ' <span class="muted">(rápida)</span>':''}</td>
+              <td>${escapeHtml(ses.nombre)}${ses.rapida? ' <span class="muted">(rápida)</span>':''}${ses.nota? ' <span class="muted">·</span>':''}</td>
               <td class="muted">${ses.series} series</td>
             </tr>`).join("")}
         </tbody></table>`
@@ -941,6 +1084,14 @@ RENDERERS.progreso = function(){
     toast("Peso guardado.");
   });
 
+  el.querySelectorAll("[data-borrar-pesaje]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      Datos.borrarPesaje(b.dataset.borrarPesaje);
+      RENDERERS.progreso();
+      toast("Pesaje borrado.");
+    });
+  });
+
   const btnFoto = document.getElementById("btnFotoHecha");
   if(btnFoto) btnFoto.addEventListener("click", ()=>{
     state.fotos.ultimaFecha = hoy;
@@ -957,6 +1108,20 @@ RENDERERS.progreso = function(){
     drawSel();
   }
 
+  const selMedida = document.getElementById("selMedida");
+  if(selMedida){
+    const pintar = ()=>{
+      const puntos = Datos.medidas
+        .filter(m=> m[selMedida.value] !== "" && m[selMedida.value] != null)
+        .map(m=>({v:Number(m[selMedida.value]), fecha:m.fecha}));
+      document.getElementById("chartMedida").innerHTML =
+        puntos.length>1 ? svgLineChart(puntos, {minSpan:2})
+                        : `<p class="muted" style="font-size:.85rem;">Hacen falta dos medidas para ver la evolución.</p>`;
+    };
+    selMedida.addEventListener("change", pintar);
+    pintar();
+  }
+
   document.getElementById("btnAddMedidas").addEventListener("click", ()=>{
     const m = {
       fecha: hoy,
@@ -969,6 +1134,10 @@ RENDERERS.progreso = function(){
     Datos.añadirMedidas(m);
     RENDERERS.progreso();
     toast("Medidas guardadas.");
+  });
+
+  el.querySelectorAll("[data-sesion-id]").forEach(fila=>{
+    fila.addEventListener("click", ()=> verSesion(Number(fila.dataset.sesionId)));
   });
 
   document.getElementById("btnCalendario").addEventListener("click", ()=>{
@@ -1013,6 +1182,83 @@ RENDERERS.progreso = function(){
 
 /* Resumen: lo que la base de datos permite calcular y antes no existía.
    Números exactos, sin adornos: constancia, carga movida y tendencia. */
+/* Ver una sesión pasada y poder arreglarla: corregir un peso mal tecleado,
+   borrar una serie que no hiciste o quitar la sesión entera. */
+function verSesion(id){
+  const ses = Datos.sesiones.find(s=> s.id === id);
+  if(!ses) return;
+  const series = Datos.series.filter(s=> s.sesionId === id);
+  const porEjercicio = [];
+  series.forEach(s=>{
+    let grupo = porEjercicio.find(g=> g.id === s.ejercicioId);
+    if(!grupo){ grupo = {id:s.ejercicioId, nombre:nombreEjercicio(s.ejercicioId), series:[]}; porEjercicio.push(grupo); }
+    grupo.series.push(s);
+  });
+
+  showModal(`
+    <h2>${escapeHtml(ses.nombre)}</h2>
+    <p class="muted" style="font-size:.82rem;">
+      ${fmtFecha(ses.fecha)}${ses.minutos? " · "+ses.minutos+" min":""}${ses.volumen? " · "+ses.volumen.toLocaleString("es-ES")+" kg movidos":""}
+    </p>
+
+    ${porEjercicio.length? porEjercicio.map(g=>`
+      <div style="margin-top:16px;">
+        <div class="exname" style="font-size:1rem;">${escapeHtml(g.nombre)}</div>
+        ${g.series.map((s,i)=>`
+          <div class="exset" style="grid-template-columns:26px 1fr 1fr 44px;">
+            <div class="lbl">#${i+1}</div>
+            <input type="number" inputmode="decimal" value="${s.peso}" data-editar-peso="${s.id}" aria-label="Peso de la serie ${i+1}">
+            <input type="number" inputmode="numeric" value="${s.repes}" data-editar-repes="${s.id}" aria-label="Repeticiones de la serie ${i+1}">
+            <button class="item-x" data-borrar-serie="${s.id}" aria-label="Borrar la serie ${i+1}">✕</button>
+          </div>`).join("")}
+      </div>`).join("") : `<p class="muted">Esta sesión no tiene series apuntadas.</p>`}
+
+    <div class="field" style="margin-top:18px;">
+      <label for="notaSesion">Nota</label>
+      <textarea id="notaSesion" rows="2" placeholder="Hombro molesta, banca ocupada...">${escapeHtml(ses.nota||"")}</textarea>
+    </div>
+
+    <button class="btn btn-primary" id="mGuardarSesion">Guardar cambios</button>
+    <button class="btn btn-ghost btn-danger" id="mBorrarSesion" style="width:100%;margin-top:8px;">Borrar la sesión entera</button>
+    <button class="btn btn-ghost" id="mCerrar" style="width:100%;margin-top:8px;">Cerrar</button>
+  `);
+
+  document.getElementById("mCerrar").addEventListener("click", closeModal);
+
+  document.querySelectorAll("[data-borrar-serie]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      Datos.borrarSerie(Number(b.dataset.borrarSerie));
+      Datos.recalcularSesion(id);
+      closeModal();
+      RENDERERS.progreso();
+      toast("Serie borrada.");
+    });
+  });
+
+  document.getElementById("mGuardarSesion").addEventListener("click", ()=>{
+    document.querySelectorAll("[data-editar-peso]").forEach(inp=>{
+      const serieId = Number(inp.dataset.editarPeso);
+      const repes = document.querySelector(`[data-editar-repes="${serieId}"]`);
+      Datos.actualizarSerie(serieId, {
+        peso: Number(inp.value) || 0,
+        repes: Number(repes.value) || 0
+      });
+    });
+    Datos.actualizarSesion(id, {nota: document.getElementById("notaSesion").value.trim()});
+    Datos.recalcularSesion(id);
+    closeModal();
+    RENDERERS.progreso();
+    toast("Sesión corregida.");
+  });
+
+  document.getElementById("mBorrarSesion").addEventListener("click", ()=>{
+    Datos.borrarSesion(id);
+    closeModal();
+    RENDERERS.progreso();
+    toast("Sesión borrada.");
+  });
+}
+
 function cardResumenHTML(){
   const sesiones = Datos.sesiones;
   if(!sesiones.length){
@@ -1214,7 +1460,7 @@ RENDERERS.comida = function(){
           ${dia.filas.map(it=>`
             <div class="row" style="justify-content:space-between;align-items:center;">
               <span>${it.hora} — ${escapeHtml(it.nombre)} <span class="muted">+${it.proteina} g</span></span>
-              <button class="item-x" data-remove="${it.id}">✕</button>
+              <button class="item-x" data-remove="${it.id}" aria-label="Quitar ${escapeHtml(it.nombre)}">✕</button>
             </div>`).join("")}
         </div>` : ""}
       <button class="btn btn-ghost btn-small" id="btnOtroAlimento" style="width:100%;margin-top:10px;">+ otra comida</button>
@@ -1449,6 +1695,20 @@ RENDERERS.check = function(){
 };
 
 /* ============================= ARRANQUE ============================= */
+
+/* Si algo falla, decirlo. Una pantalla en blanco sin explicación es peor que
+   un aviso feo, y encima hace dudar de si se han perdido los datos. */
+window.addEventListener("error", e=> avisarDeFallo(e.message));
+window.addEventListener("unhandledrejection", e=> avisarDeFallo(e.reason && e.reason.message));
+
+let fallosAvisados = 0;
+function avisarDeFallo(mensaje){
+  if(fallosAvisados++ > 2) return;   // no encadenar avisos
+  try{
+    Datos.guardarAjuste("ultimoFallo", {mensaje:String(mensaje||"desconocido"), cuando:Date.now()});
+    toast("Algo ha fallado, pero tus datos están guardados. Si se repite, exporta una copia.", 6000);
+  }catch(e){}
+}
 
 // Nada se pinta hasta que la base de datos está abierta y cargada: así la
 // primera pantalla ya sale con los datos buenos, sin parpadeos.
