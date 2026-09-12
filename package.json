@@ -1,0 +1,20 @@
+{
+  "name": "mi-gym",
+  "version": "1.0.0",
+  "description": "Web personal de entrenamiento: rutina, sesiones, progreso y comida. Sin backend y sin cuentas.",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test:watch": "node --test --watch --test-concurrency=1 \"tests/**/*.test.js\"",
+    "lint": "eslint js tests",
+    "serve": "node tests/servidor.js --puerto 8080"
+  },
+  "devDependencies": {
+    "eslint": "^9.0.0",
+    "playwright": "^1.56.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
