@@ -61,7 +61,7 @@ A partir de ahí se abre como una app normal, en pantalla completa, tema oscuro,
 
 ## Datos
 
-Todo el contenido (rutinas, técnica, comida, suplementos, sueño...) viene directamente de tus notas (`rutina-gym.md`, `guia-completa-gym.md`, `spec-web.md`) y está embebido en `index.html`. Si cambias de rutina o de datos, se edita ahí — son objetos JS al principio del `<script>`, fáciles de localizar por nombre (`RUTINA_NORMAL`, `ALIMENTOS`, `TECNICA`, etc.).
+Todo el contenido (rutinas, técnica, comida, suplementos, sueño...) viene directamente de tus notas (`rutina-gym.md`, `guia-completa-gym.md`, `spec-web.md`) y vive en `js/datos.js`, separado de la lógica. Si cambias de rutina, se edita ahí: son objetos con nombre (`RUTINA_NORMAL`, `RUTINA_OBRA`, `ALIMENTOS`, `TECNICA`...) y nada más hay que tocar.
 
 ## Cómo se guardan los datos
 
