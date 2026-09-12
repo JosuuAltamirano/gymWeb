@@ -509,7 +509,20 @@ function ajusteCon(clave, porDefecto){
   return Datos.ajustes[clave];
 }
 
+/* Los objetivos cambian con el tiempo: a 74 kg ya no tocan los mismos
+   gramos de proteína que a 66. Se guardan en ajustes y el perfil es solo
+   el punto de partida. */
+function objetivo(clave){
+  const propios = Datos.ajustes.objetivos || {};
+  return propios[clave] !== undefined && propios[clave] !== null
+    ? propios[clave]
+    : PERFIL[clave];
+}
+
 const state = {
+  get objetivos(){ return ajusteCon("objetivos", {}); },
+  set objetivos(v){ Datos.guardarAjuste("objetivos", v); },
+
   get modo(){ return ajusteCon("modo", "normal"); },
   set modo(v){ Datos.guardarAjuste("modo", v); },
 
@@ -538,7 +551,7 @@ const state = {
 };
 
 const AJUSTES_PERSISTIDOS = ["modo","sesionActual","checklist","arranque",
-  "deload","fotos","subirPeso","ultimaExportacion"];
+  "deload","fotos","subirPeso","ultimaExportacion","objetivos"];
 
 // Persiste los ajustes que se hayan podido modificar en el sitio.
 function saveState(){

@@ -239,7 +239,7 @@ function cardPesoHTML(hoyISO, mostrar, texto){
 }
 
 function cardProteinaHTML(){
-  const g = proteinaHoy().gramos, obj = PERFIL.proteina_objetivo_g;
+  const g = proteinaHoy().gramos, obj = objetivo("proteina_objetivo_g");
   const pct = Math.min(100, Math.round((g/obj)*100));
   return `
     <div class="card" id="cardProteina" style="cursor:pointer;">
@@ -941,9 +941,9 @@ RENDERERS.progreso = function(){
       ${renderPesoChart()}
       ${(()=>{
         const u = Datos.pesajes.length? Datos.pesajes[Datos.pesajes.length-1].kg : PERFIL.peso_inicial_kg;
-        const falta = (PERFIL.peso_objetivo_12_meses_kg - u).toFixed(1);
+        const falta = (objetivo("peso_objetivo_12_meses_kg") - u).toFixed(1);
         return `<div class="kpi" style="margin-top:6px;">
-          <span class="muted" style="font-size:.8rem;">Desde ${PERFIL.peso_inicial_kg} kg · objetivo ${PERFIL.peso_objetivo_12_meses_kg} kg</span>
+          <span class="muted" style="font-size:.8rem;">Desde ${PERFIL.peso_inicial_kg} kg · objetivo ${objetivo("peso_objetivo_12_meses_kg")} kg</span>
           <span class="muted" style="font-size:.8rem;">${falta>0? "faltan "+falta+" kg" : "objetivo cumplido"}</span>
         </div>`;
       })()}
@@ -1037,6 +1037,8 @@ RENDERERS.progreso = function(){
         </tbody></table>`
         : `<p class="muted">Aún no has terminado ninguna sesión.</p>`}
     </div>
+
+    ${cardObjetivosHTML()}
 
     <div class="card">
       <h2>Recordatorios</h2>
@@ -1138,6 +1140,19 @@ RENDERERS.progreso = function(){
 
   el.querySelectorAll("[data-sesion-id]").forEach(fila=>{
     fila.addEventListener("click", ()=> verSesion(Number(fila.dataset.sesionId)));
+  });
+
+  document.getElementById("btnObjetivos").addEventListener("click", ()=>{
+    const proteina = parseFloat(document.getElementById("objProteina").value);
+    const kcal = parseFloat(document.getElementById("objKcal").value);
+    const peso = parseFloat(document.getElementById("objPeso").value);
+    state.objetivos = {
+      proteina_objetivo_g: proteina || PERFIL.proteina_objetivo_g,
+      calorias_objetivo: kcal || PERFIL.calorias_objetivo,
+      peso_objetivo_12_meses_kg: peso || PERFIL.peso_objetivo_12_meses_kg
+    };
+    RENDERERS.progreso();
+    toast("Objetivos actualizados.");
   });
 
   document.getElementById("btnCalendario").addEventListener("click", ()=>{
@@ -1257,6 +1272,37 @@ function verSesion(id){
     RENDERERS.progreso();
     toast("Sesión borrada.");
   });
+}
+
+/* Los objetivos no son fijos: a 74 kg no tocan los mismos gramos que a 66.
+   Se muestra el ratio por kilo para que el número se pueda juzgar, sin decirte
+   lo que tienes que hacer. */
+function cardObjetivosHTML(){
+  const peso = Datos.pesajes.length
+    ? Datos.pesajes[Datos.pesajes.length-1].kg
+    : PERFIL.peso_inicial_kg;
+  const prote = objetivo("proteina_objetivo_g");
+  const porKilo = (prote/peso).toFixed(2).replace(".", ",");
+
+  return `
+    <div class="card">
+      <h2>Objetivos</h2>
+      <div class="grid2">
+        <div><label for="objProteina">Proteína (g)</label>
+          <input type="number" id="objProteina" inputmode="numeric" value="${prote}"></div>
+        <div><label for="objKcal">Calorías</label>
+          <input type="number" id="objKcal" inputmode="numeric" value="${objetivo("calorias_objetivo")}"></div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label for="objPeso">Peso objetivo (kg)</label>
+        <input type="number" id="objPeso" inputmode="decimal" step="0.5" value="${objetivo("peso_objetivo_12_meses_kg")}">
+      </div>
+      <p class="muted" style="font-size:.8rem;">
+        ${prote} g con ${peso} kg son <b>${porKilo} g por kilo</b>. Para ganar músculo se suele
+        apuntar a 1,6-2,2. Cuando subas de peso, este número baja solo.
+      </p>
+      <button class="btn btn-primary btn-small" id="btnObjetivos">Guardar objetivos</button>
+    </div>`;
 }
 
 function cardResumenHTML(){
@@ -1548,19 +1594,19 @@ function proteinaHoy(){
 RENDERERS.comida = function(){
   const el = document.getElementById("screen-comida");
   const dia = proteinaHoy();
-  const pct = Math.min(100, Math.round((dia.gramos/PERFIL.proteina_objetivo_g)*100));
+  const pct = Math.min(100, Math.round((dia.gramos/objetivo("proteina_objetivo_g"))*100));
 
   el.innerHTML = `
     <div class="card">
       <h2>Proteína de hoy</h2>
       <div class="kpi">
-        <b style="font-size:2.4rem;color:${dia.gramos>=PERFIL.proteina_objetivo_g?'var(--volt)':'var(--ink)'};">${Math.round(dia.gramos)}<span class="muted" style="font-size:1.1rem;font-weight:600;"> / ${PERFIL.proteina_objetivo_g} g</span></b>
-        <span class="muted" style="font-size:.8rem;">${Math.round(dia.gramos/PERFIL.proteina_objetivo_g*100)}%</span>
+        <b style="font-size:2.4rem;color:${dia.gramos>=objetivo("proteina_objetivo_g")?'var(--volt)':'var(--ink)'};">${Math.round(dia.gramos)}<span class="muted" style="font-size:1.1rem;font-weight:600;"> / ${objetivo("proteina_objetivo_g")} g</span></b>
+        <span class="muted" style="font-size:.8rem;">${Math.round(dia.gramos/objetivo("proteina_objetivo_g")*100)}%</span>
       </div>
       <div class="progress" style="margin:12px 0 10px;">
         <div style="width:${pct}%;"></div>
       </div>
-      <div class="muted" style="font-size:.8rem;">${dia.kcal} kcal de ${PERFIL.calorias_objetivo} objetivo</div>
+      <div class="muted" style="font-size:.8rem;">${dia.kcal} kcal de ${objetivo("calorias_objetivo")} objetivo</div>
       ${dia.filas.length? `
         <hr>
         <div style="font-size:.85rem;display:flex;flex-direction:column;gap:6px;">
