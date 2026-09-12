@@ -226,3 +226,19 @@ letter-spacing:.12em;font-weight:600;white-space:nowrap;}
 }
 
 textarea{min-height:72px;resize:vertical;line-height:1.45;font-size:.95rem;}
+
+/* Lista de alimentos: nombre y ración a la izquierda, proteína a la derecha,
+   y el lápiz para corregir el valor con tu etiqueta. */
+.alimento{display:grid;grid-template-columns:1fr auto 40px;gap:8px;align-items:center;
+  border-bottom:1px solid var(--line);}
+.alimento:last-child{border-bottom:none;}
+.alimento-add{background:none;border:none;color:var(--ink);font-family:inherit;
+  text-align:left;padding:12px 0;cursor:pointer;display:flex;flex-direction:column;gap:2px;}
+.alimento-nombre{font-size:.92rem;font-weight:600;line-height:1.25;}
+.alimento-racion{font-size:.72rem;color:var(--dim);}
+.alimento-prote{color:var(--volt);font-size:.82rem;font-weight:700;
+  font-variant-numeric:tabular-nums;white-space:nowrap;}
+.alimento-editar{background:none;border:none;color:var(--faint);font-size:.95rem;
+  padding:10px 4px;cursor:pointer;font-family:inherit;}
+.alimento-editar:active{color:var(--ink);}
+#buscarAlimento{font-size:1rem;}

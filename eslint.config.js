@@ -19,6 +19,7 @@ const globalesApp = {
   ALCOHOL: "readonly", PROBLEMAS: "readonly", NO_HAGO: "readonly",
   EXPECTATIVAS: "readonly", CALENDARIO: "readonly", FRASES: "readonly",
   CHECKLIST_ITEMS: "readonly", VERSION: "readonly",
+  CATEGORIAS_ALIMENTOS: "readonly",
   Datos: "readonly", Avisos: "readonly", DIAS_ORDEN: "readonly",
   state: "readonly", saveState: "readonly",
   pedirAlmacenamientoPersistente: "readonly", lunesDe: "readonly", nuevoId: "readonly",

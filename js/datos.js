@@ -1,7 +1,7 @@
 /* Datos fijos: rutina, técnica, comida y guía. Aquí es donde se edita si
    cambia el plan; la lógica no se toca. */
 
-const VERSION = "1.2.1";
+const VERSION = "1.3.0";
 
 /* ============================= DATOS ============================= */
 
@@ -144,23 +144,63 @@ const TECNICA = {
   agarre_muerto:{ claves:["Cojo dos mancuernas pesadas y aguanto de pie","30-45 segundos hasta no poder más"], nota:"Lo que más engorda el antebrazo. PUNTO DÉBIL." }
 };
 
+/* Lo que se compra en el Mercadona, con raciones de verdad.
+   Valores por ración, redondeados. Si tu etiqueta dice otra cosa (cambian las
+   recetas), edítalo desde COMIDA y se guarda como tuyo para siempre. */
 const ALIMENTOS = [
-  {nombre:"3 huevos", proteina_g:18, kcal:210},
-  {nombre:"1 lata de atún", proteina_g:15, kcal:110},
-  {nombre:"150g pollo", proteina_g:33, kcal:250},
-  {nombre:"150g carne picada", proteina_g:30, kcal:330},
-  {nombre:"Vaso leche entera", proteina_g:8, kcal:160},
-  {nombre:"Yogur griego", proteina_g:10, kcal:130},
-  {nombre:"100g queso fresco", proteina_g:12, kcal:100},
-  {nombre:"Puñado frutos secos", proteina_g:6, kcal:180},
-  {nombre:"2 cdas crema cacahuete", proteina_g:8, kcal:190},
-  {nombre:"100g arroz cocido", proteina_g:2.5, kcal:130},
-  {nombre:"Cacito proteína", proteina_g:24, kcal:120},
-  {nombre:"Cucharada aceite oliva", proteina_g:0, kcal:120},
-  {nombre:"Plátano", proteina_g:1, kcal:100},
-  {nombre:"Bocadillo atún", proteina_g:20, kcal:450},
-  {nombre:"Batido leche+plátano+cacahuete", proteina_g:17, kcal:500}
+  // --- Proteína ---
+  {id:"huevo", nombre:"Huevo", racion:"1 ud (M)", proteina_g:6.5, kcal:80, cat:"Proteína"},
+  {id:"pollo", nombre:"Pechuga de pollo", racion:"150 g", proteina_g:35, kcal:175, cat:"Proteína"},
+  {id:"muslo_pollo", nombre:"Contramuslo de pollo", racion:"150 g", proteina_g:28, kcal:270, cat:"Proteína"},
+  {id:"carne_picada", nombre:"Carne picada de ternera", racion:"150 g", proteina_g:30, kcal:290, cat:"Proteína"},
+  {id:"atun_aceite", nombre:"Atún claro en aceite", racion:"1 lata escurrida", proteina_g:12, kcal:105, cat:"Proteína"},
+  {id:"atun_natural", nombre:"Atún claro al natural", racion:"1 lata escurrida", proteina_g:13, kcal:60, cat:"Proteína"},
+  {id:"pavo_lonchas", nombre:"Pechuga de pavo en lonchas", racion:"3 lonchas (60 g)", proteina_g:12, kcal:70, cat:"Proteína"},
+  {id:"jamon_york", nombre:"Jamón cocido", racion:"3 lonchas (60 g)", proteina_g:11, kcal:80, cat:"Proteína"},
+  {id:"merluza", nombre:"Merluza", racion:"200 g", proteina_g:34, kcal:150, cat:"Proteína"},
+  {id:"salmon", nombre:"Salmón", racion:"150 g", proteina_g:30, kcal:310, cat:"Proteína"},
+  {id:"caballa", nombre:"Caballa en aceite", racion:"1 lata escurrida", proteina_g:15, kcal:180, cat:"Proteína"},
+  {id:"proteina_polvo", nombre:"Proteína en polvo", racion:"1 cacito (30 g)", proteina_g:24, kcal:120, cat:"Proteína"},
+
+  // --- Lácteos ---
+  {id:"leche_vaso", nombre:"Leche entera", racion:"vaso (250 ml)", proteina_g:8, kcal:160, cat:"Lácteos"},
+  {id:"yogur_griego", nombre:"Yogur estilo griego natural", racion:"1 ud (125 g)", proteina_g:5, kcal:160, cat:"Lácteos"},
+  {id:"yogur_griego_ligero", nombre:"Yogur griego ligero natural", racion:"1 ud (125 g)", proteina_g:7, kcal:75, cat:"Lácteos"},
+  {id:"yogur_natural", nombre:"Yogur natural", racion:"1 ud (125 g)", proteina_g:4.5, kcal:80, cat:"Lácteos"},
+  {id:"queso_batido", nombre:"Queso batido 0%", racion:"1 vaso (250 g)", proteina_g:20, kcal:120, cat:"Lácteos"},
+  {id:"queso_fresco", nombre:"Queso fresco de Burgos", racion:"100 g", proteina_g:12, kcal:170, cat:"Lácteos"},
+  {id:"queso_curado", nombre:"Queso curado", racion:"40 g", proteina_g:11, kcal:160, cat:"Lácteos"},
+
+  // --- Hidratos ---
+  {id:"arroz", nombre:"Arroz cocido", racion:"plato (200 g)", proteina_g:5, kcal:260, cat:"Hidratos"},
+  {id:"pasta", nombre:"Pasta cocida", racion:"plato (200 g)", proteina_g:10, kcal:300, cat:"Hidratos"},
+  {id:"patata", nombre:"Patata cocida o al horno", racion:"250 g", proteina_g:5, kcal:215, cat:"Hidratos"},
+  {id:"pan_molde", nombre:"Pan de molde", racion:"2 rebanadas", proteina_g:5, kcal:150, cat:"Hidratos"},
+  {id:"pan_barra", nombre:"Pan de barra", racion:"1/4 de barra (80 g)", proteina_g:7, kcal:210, cat:"Hidratos"},
+  {id:"avena", nombre:"Copos de avena", racion:"60 g", proteina_g:8, kcal:225, cat:"Hidratos"},
+  {id:"lentejas", nombre:"Lentejas cocidas", racion:"1 bote (400 g)", proteina_g:16, kcal:280, cat:"Hidratos"},
+
+  // --- Grasas ---
+  {id:"aceite", nombre:"Aceite de oliva virgen extra", racion:"1 cucharada", proteina_g:0, kcal:120, cat:"Grasas"},
+  {id:"frutos_secos", nombre:"Frutos secos (almendra, nuez)", racion:"puñado (30 g)", proteina_g:6, kcal:180, cat:"Grasas"},
+  {id:"cacahuetes", nombre:"Cacahuetes", racion:"puñado (30 g)", proteina_g:8, kcal:170, cat:"Grasas"},
+  {id:"crema_cacahuete", nombre:"Crema de cacahuete", racion:"2 cucharadas (30 g)", proteina_g:8, kcal:180, cat:"Grasas"},
+  {id:"aguacate", nombre:"Aguacate", racion:"medio", proteina_g:2, kcal:160, cat:"Grasas"},
+
+  // --- Fruta ---
+  {id:"platano", nombre:"Plátano", racion:"1 ud", proteina_g:1.5, kcal:110, cat:"Fruta"},
+  {id:"manzana", nombre:"Manzana", racion:"1 ud", proteina_g:0.5, kcal:80, cat:"Fruta"},
+  {id:"naranja", nombre:"Naranja", racion:"1 ud", proteina_g:1, kcal:70, cat:"Fruta"},
+
+  // --- Comidas montadas ---
+  {id:"batido_casero", nombre:"Batido: leche, plátano y crema de cacahuete", racion:"1 vaso grande", proteina_g:17, kcal:470, cat:"Rápido"},
+  {id:"bocadillo_atun", nombre:"Bocadillo de atún", racion:"1 ud", proteina_g:20, kcal:450, cat:"Rápido"},
+  {id:"bocadillo_tortilla", nombre:"Bocadillo de tortilla", racion:"1 ud", proteina_g:19, kcal:480, cat:"Rápido"},
+  {id:"arroz_atun", nombre:"Arroz precocido con atún y aceite", racion:"1 plato", proteina_g:18, kcal:700, cat:"Rápido"},
+  {id:"huevos_plancha", nombre:"Dos huevos a la plancha", racion:"2 ud", proteina_g:13, kcal:200, cat:"Rápido"}
 ];
+
+const CATEGORIAS_ALIMENTOS = ["Proteína", "Lácteos", "Hidratos", "Grasas", "Fruta", "Rápido"];
 
 const MENUS = {
   dia_gym:[

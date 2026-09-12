@@ -11,7 +11,7 @@
    ============================================================ */
 
 const DB_NOMBRE = "migym";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const CLAVE_RESCATE = "migym_rescate";
 const CLAVE_ANTIGUA = "gymapp_v1";
 
@@ -30,7 +30,9 @@ const ESQUEMA = {
   comidas: { keyPath:"id", autoIncrement:true, indices:[
     {nombre:"fecha", campo:"fecha"}
   ]},
-  ajustes: { keyPath:"clave", indices:[] }
+  ajustes: { keyPath:"clave", indices:[] },
+  // Alimentos propios y correcciones a los del catálogo, por id.
+  alimentos: { keyPath:"id", indices:[] }
 };
 
 const Datos = {
@@ -41,6 +43,7 @@ const Datos = {
   pesajes: [],
   medidas: [],
   comidas: [],
+  alimentos: [],
   ajustes: {},
 
   /* ---------- Apertura y migración ---------- */
@@ -297,6 +300,39 @@ const Datos = {
       ejercicios,
       volumen: Math.round(series.reduce((t,s)=> t + s.peso*s.repes, 0))
     });
+  },
+
+  /* Catálogo = lo que trae la web, con tus correcciones encima, más los
+     alimentos que hayas añadido tú. Si tu etiqueta dice otra cosa, manda
+     la tuya. */
+  catalogo(){
+    const propios = new Map(this.alimentos.map(a=> [a.id, a]));
+    const base = ALIMENTOS.map(a=> propios.has(a.id) ? {...a, ...propios.get(a.id), propio:true} : a);
+    const extra = this.alimentos.filter(a=> !ALIMENTOS.some(b=> b.id === a.id))
+      .map(a=> ({...a, propio:true, nuevo:true}));
+    return base.concat(extra);
+  },
+
+  guardarAlimento(alimento){
+    this.alimentos = this.alimentos.filter(a=> a.id !== alimento.id).concat([alimento]);
+    this.escribir("alimentos", alimento);
+  },
+
+  // Borrar el tuyo devuelve el del catálogo, si lo había.
+  borrarAlimento(id){
+    this.alimentos = this.alimentos.filter(a=> a.id !== id);
+    this.borrar("alimentos", id);
+  },
+
+  // Lo que más repites: después de una semana son casi todo lo que usas.
+  alimentosFrecuentes(cuantos){
+    const cuenta = new Map();
+    this.comidas.forEach(c=> cuenta.set(c.nombre, (cuenta.get(c.nombre)||0) + 1));
+    return [...cuenta.entries()]
+      .sort((a,b)=> b[1]-a[1])
+      .slice(0, cuantos||6)
+      .map(([nombre])=> this.catalogo().find(a=> a.nombre === nombre))
+      .filter(Boolean);
   },
 
   añadirComida(comida){

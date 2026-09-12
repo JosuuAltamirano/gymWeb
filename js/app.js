@@ -1412,6 +1412,118 @@ function renderEjercicioChart(exId){
 
 /* ============================= COMIDA ============================= */
 
+let filtroAlimento = "";
+
+// Sin tildes ni mayúsculas: a las 6:00 nadie escribe "plátano" con tilde.
+function normalizar(t){
+  return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function pintarListaAlimentos(){
+  const caja = document.getElementById("listaAlimentos");
+  if(!caja) return;
+
+  const catalogo = Datos.catalogo();
+  const busca = normalizar(filtroAlimento.trim());
+  const encontrados = busca
+    ? catalogo.filter(a=> normalizar(a.nombre + " " + (a.cat||"")).includes(busca))
+    : null;
+
+  const fila = a=> `
+    <div class="alimento">
+      <button class="alimento-add" data-alimento="${escapeHtml(a.id)}">
+        <span class="alimento-nombre">${escapeHtml(a.nombre)}${a.propio? ' <span class="badge" style="padding:2px 6px;">tuyo</span>':''}</span>
+        <span class="alimento-racion">${escapeHtml(a.racion||"")}</span>
+      </button>
+      <span class="alimento-prote">+${a.proteina_g} g</span>
+      <button class="alimento-editar" data-editar-alimento="${escapeHtml(a.id)}"
+        aria-label="Corregir ${escapeHtml(a.nombre)}">✎</button>
+    </div>`;
+
+  if(encontrados){
+    caja.innerHTML = encontrados.length
+      ? encontrados.map(fila).join("")
+      : `<p class="muted" style="font-size:.88rem;">Nada con ese nombre. Puedes guardarlo como alimento fijo.</p>`;
+  } else {
+    const frecuentes = Datos.alimentosFrecuentes(6);
+    const grupos = CATEGORIAS_ALIMENTOS.map(cat=>{
+      const items = catalogo.filter(a=> a.cat === cat);
+      if(!items.length) return "";
+      return `<div class="eyebrow" style="margin:16px 0 8px;">${cat}</div>` + items.map(fila).join("");
+    }).join("");
+    const otros = catalogo.filter(a=> !CATEGORIAS_ALIMENTOS.includes(a.cat));
+    caja.innerHTML =
+      (frecuentes.length ? `<div class="eyebrow" style="margin-bottom:8px;">Lo que más repites</div>` +
+        frecuentes.map(fila).join("") : "") +
+      grupos +
+      (otros.length ? `<div class="eyebrow" style="margin:16px 0 8px;">Tuyos</div>` + otros.map(fila).join("") : "");
+  }
+
+  caja.querySelectorAll("[data-alimento]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const a = Datos.catalogo().find(x=> x.id === b.dataset.alimento);
+      if(a) anotarAlimento(a.nombre, a.proteina_g, a.kcal);
+    });
+  });
+  caja.querySelectorAll("[data-editar-alimento]").forEach(b=>{
+    b.addEventListener("click", ()=> editarAlimento(b.dataset.editarAlimento));
+  });
+}
+
+/* Corregir un alimento del catálogo o crear uno tuyo. Las recetas cambian y
+   cada uno compra lo que compra: lo que manda es tu etiqueta. */
+function editarAlimento(id){
+  const a = id ? Datos.catalogo().find(x=> x.id === id) : null;
+  const propio = a && a.propio;
+
+  showModal(`
+    <h2>${a ? escapeHtml(a.nombre) : "Alimento nuevo"}</h2>
+    <p class="muted" style="font-size:.85rem;">
+      ${a ? "Pon lo que diga tu etiqueta para la ración que te comes." : "Algo que compras y no está en la lista."}
+    </p>
+    <div class="field"><label for="alNombre">Nombre</label>
+      <input type="text" id="alNombre" value="${a? escapeHtml(a.nombre):""}" placeholder="Requesón Hacendado"></div>
+    <div class="field"><label for="alRacion">Ración</label>
+      <input type="text" id="alRacion" value="${a? escapeHtml(a.racion||""):""}" placeholder="1 tarrina (250 g)"></div>
+    <div class="row">
+      <div class="col field"><label for="alProte">Proteína (g)</label>
+        <input type="number" id="alProte" inputmode="decimal" value="${a? a.proteina_g:""}"></div>
+      <div class="col field"><label for="alKcal">Kcal</label>
+        <input type="number" id="alKcal" inputmode="numeric" value="${a? a.kcal:""}"></div>
+    </div>
+    <button class="btn btn-primary" id="mGuardarAlimento">Guardar</button>
+    ${propio ? `<button class="btn btn-ghost btn-danger" id="mBorrarAlimento" style="width:100%;margin-top:8px;">${a.nuevo? "Borrar este alimento" : "Volver al valor original"}</button>` : ""}
+    <button class="btn btn-ghost" id="mCerrar" style="width:100%;margin-top:8px;">Cerrar</button>
+  `);
+
+  document.getElementById("mCerrar").addEventListener("click", closeModal);
+
+  document.getElementById("mGuardarAlimento").addEventListener("click", ()=>{
+    const nombre = document.getElementById("alNombre").value.trim();
+    const proteina = parseFloat(document.getElementById("alProte").value);
+    if(!nombre || isNaN(proteina)) return;
+    Datos.guardarAlimento({
+      id: id || "propio_" + normalizar(nombre).replace(/[^a-z0-9]+/g, "_").slice(0, 30) + "_" + Date.now(),
+      nombre,
+      racion: document.getElementById("alRacion").value.trim(),
+      proteina_g: proteina,
+      kcal: parseFloat(document.getElementById("alKcal").value) || 0,
+      cat: (a && a.cat) || "Rápido"
+    });
+    closeModal();
+    pintarListaAlimentos();
+    toast("Guardado.");
+  });
+
+  const btnBorrar = document.getElementById("mBorrarAlimento");
+  if(btnBorrar) btnBorrar.addEventListener("click", ()=>{
+    Datos.borrarAlimento(id);
+    closeModal();
+    pintarListaAlimentos();
+    toast("Listo.");
+  });
+}
+
 function anotarAlimento(nombre, proteina_g, kcal){
   Datos.añadirComida({
     fecha: todayStr(), nombre,
@@ -1419,6 +1531,8 @@ function anotarAlimento(nombre, proteina_g, kcal){
     hora: new Date().toTimeString().slice(0,5)
   });
   RENDERERS.comida();
+  const buscador = document.getElementById("buscarAlimento");
+  if(buscador && filtroAlimento) buscador.focus();
 }
 
 // Las comidas son filas con fecha, así que el día se reinicia solo.
@@ -1447,23 +1561,30 @@ RENDERERS.comida = function(){
         <div style="width:${pct}%;"></div>
       </div>
       <div class="muted" style="font-size:.8rem;">${dia.kcal} kcal de ${PERFIL.calorias_objetivo} objetivo</div>
-      <div class="grid2" style="margin-top:16px;">
-        ${ALIMENTOS.map((a,i)=>`
-          <button class="foodbtn" data-food="${i}">
-            <b>${escapeHtml(a.nombre)}</b>
-            <span>+${a.proteina_g} g</span>
-          </button>`).join("")}
-      </div>
       ${dia.filas.length? `
         <hr>
-        <div style="font-size:.8rem;">
+        <div style="font-size:.85rem;display:flex;flex-direction:column;gap:6px;">
           ${dia.filas.map(it=>`
             <div class="row" style="justify-content:space-between;align-items:center;">
               <span>${it.hora} — ${escapeHtml(it.nombre)} <span class="muted">+${it.proteina} g</span></span>
               <button class="item-x" data-remove="${it.id}" aria-label="Quitar ${escapeHtml(it.nombre)}">✕</button>
             </div>`).join("")}
         </div>` : ""}
-      <button class="btn btn-ghost btn-small" id="btnOtroAlimento" style="width:100%;margin-top:10px;">+ otra comida</button>
+    </div>
+
+    <div class="card">
+      <h2>Añadir comida</h2>
+      <input type="search" id="buscarAlimento" placeholder="Buscar: pollo, yogur, avena..."
+        value="${escapeHtml(filtroAlimento)}" aria-label="Buscar alimento">
+      <div id="listaAlimentos" style="margin-top:14px;"></div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn btn-ghost btn-small col" id="btnOtroAlimento">Comida suelta</button>
+        <button class="btn btn-ghost btn-small col" id="btnNuevoAlimento">+ alimento fijo</button>
+      </div>
+      <p class="muted" style="font-size:.78rem;margin:10px 0 0;">
+        Raciones y valores orientativos del Mercadona. Si tu etiqueta dice otra cosa,
+        toca el lápiz y se guarda tu valor para siempre.
+      </p>
     </div>
 
     <details>
@@ -1501,12 +1622,15 @@ RENDERERS.comida = function(){
     </details>
   `;
 
-  el.querySelectorAll("[data-food]").forEach(b=>{
-    b.addEventListener("click", ()=>{
-      const a = ALIMENTOS[Number(b.dataset.food)];
-      anotarAlimento(a.nombre, a.proteina_g, a.kcal);
-    });
+  pintarListaAlimentos();
+
+  const buscador = document.getElementById("buscarAlimento");
+  buscador.addEventListener("input", ()=>{
+    filtroAlimento = buscador.value;
+    pintarListaAlimentos();   // solo la lista, para no perder el foco al escribir
   });
+
+  document.getElementById("btnNuevoAlimento").addEventListener("click", ()=> editarAlimento(null));
   el.querySelectorAll("[data-remove]").forEach(b=>{
     b.addEventListener("click", ()=>{
       Datos.borrarComida(Number(b.dataset.remove));
