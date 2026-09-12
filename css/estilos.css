@@ -1,4 +1,7 @@
 :root{
+  /* Interfaz oscura también en los controles nativos del sistema:
+     el selector de fecha y los desplegables, si no, salen en blanco. */
+  color-scheme: dark;
   /* Casi negro, hueso y un solo color de señal */
   --bg:#0A0A0B;
   --surf:#141417;
