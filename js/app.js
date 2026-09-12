@@ -169,7 +169,7 @@ RENDERERS.hoy = function(){
           <div class="eyebrow">${DIAS_LABEL[diaKey]}${dia.hora? " · "+dia.hora:""}</div>
           <h1>${esDescanso? "Descanso" : escapeHtml(dia.nombre)}</h1>
         </div>
-        <span class="badge on">Día ${diasDesdeInicio}</span>
+        <span class="badge">Día ${diasDesdeInicio}</span>
       </div>
       <div style="margin-top:14px;display:flex;flex-direction:column;gap:4px;">
         ${dia.aviso? `<p class="muted" style="font-size:.84rem;margin:0;color:var(--amber);">${escapeHtml(dia.aviso)}</p>`:""}
@@ -542,6 +542,9 @@ RENDERERS.sesion = function(){
   });
   el.querySelectorAll("[data-addset]").forEach(b=> b.addEventListener("click", onAddSet));
   el.querySelectorAll("[data-delset]").forEach(b=> b.addEventListener("click", onDelSet));
+  el.querySelectorAll("[data-porque]").forEach(b=>{
+    b.addEventListener("click", ()=> explicarSugerencia(currentEjercicios()[Number(b.dataset.porque)]));
+  });
 
   if(s.restFin && s.restFin > Date.now()) runRestTimer(s.restFin);
 };
@@ -596,6 +599,8 @@ function renderEjercicio(ex, idx){
       </div>
       <button class="btn btn-small btn-ghost btn-tecnica" data-ex="${ex.id}">técnica</button>
     </div>
+    ${ex.sets[0] && ex.sets[0].sugPeso!=="" && ex.sets[0].sugPeso!=null
+      ? `<button class="porque" data-porque="${idx}">por qué este peso</button>` : ""}
     ${ex.sets.map((st,si)=>`
       <div class="exset">
         <div class="lbl">#${si+1}</div>
@@ -694,6 +699,32 @@ function stopRestTimer(){
   if(state.sesionActual){ state.sesionActual.restFin = null; saveState(); }
 }
 
+/* La sugerencia no es magia: esto enseña la regla aplicada y los datos
+   concretos de los que sale, para poder discutirla o ignorarla con criterio. */
+function explicarSugerencia(ex){
+  const uv = ultimaVez(ex.id);
+  const sug = state.subirPeso[ex.id];
+  const {low, high} = parseRepRange(ex.repes);
+  const subiendo = !!(sug && sug.hasta);
+  const anterior = uv ? uv.series.map(st=>`${st.peso} kg × ${st.repes}`).join(" · ") : "—";
+
+  showModal(`
+    <h2>${escapeHtml(ex.nombre)}</h2>
+    <dl class="regla">
+      <dt>Regla</dt><dd>Doble progresión: mismo peso hasta el tope del rango, y entonces subir.</dd>
+      <dt>Rango</dt><dd>${low}${high!==low? " a "+high : ""} repeticiones${high!==low? " por serie" : ""}</dd>
+      <dt>Última vez</dt><dd>${escapeHtml(anterior)}</dd>
+      <dt>Lectura</dt><dd>${subiendo
+        ? `Completaste el tope del rango en todas las series con ${sug.desde} kg, así que toca subir ${(sug.hasta-sug.desde).toFixed(2).replace(".",",").replace(",00","")} kg y volver a ${low}.`
+        : `Aún no has llegado al tope en todas las series, así que se repite el peso buscando una repetición más.`}</dd>
+      <dt>Propuesta</dt><dd><b>${ex.sets[0].sugPeso} kg × ${ex.sets[0].sugRepes}</b>, dejando 1-2 repeticiones en recámara.</dd>
+    </dl>
+    <p class="muted" style="font-size:.82rem;margin-top:12px;">Es una propuesta, no una orden: si has dormido mal o comido poco, baja y repite peso.</p>
+    <button class="btn btn-primary" id="mCerrar" style="margin-top:8px;">Entendido</button>
+  `, {center:true});
+  document.getElementById("mCerrar").addEventListener("click", closeModal);
+}
+
 function showTecnica(exId){
   const t = TECNICA[exId];
   const nombre = nombreEjercicio(exId);
@@ -785,6 +816,8 @@ RENDERERS.progreso = function(){
   }).filter(Boolean).sort((a,b)=> b.max-a.max);
 
   el.innerHTML = `
+    ${cardResumenHTML()}
+
     <div class="card">
       <h2>Peso corporal</h2>
       ${renderPesoChart()}
@@ -948,6 +981,87 @@ RENDERERS.progreso = function(){
     reader.readAsText(file);
   });
 };
+
+/* Resumen: lo que la base de datos permite calcular y antes no existía.
+   Números exactos, sin adornos: constancia, carga movida y tendencia. */
+function cardResumenHTML(){
+  const sesiones = Datos.sesiones;
+  if(!sesiones.length){
+    return `<div class="card">
+      <h2>Resumen</h2>
+      <p class="muted">Cuando registres la primera sesión, aquí salen las cifras.</p>
+    </div>`;
+  }
+  const hoy = todayStr();
+  const desde28 = new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
+  const recientes = sesiones.filter(s=> s.fecha >= desde28);
+  const seriesRecientes = Datos.series.filter(s=> s.fecha >= desde28);
+  const volumenTotal = Datos.series.reduce((t,s)=> t + s.peso*s.repes, 0);
+  const porSemana = (recientes.length/4).toFixed(1).replace(".",",");
+
+  // Ritmo real de peso corporal, en kg por semana, con los últimos pesajes.
+  let ritmo = null;
+  const p = Datos.pesajes;
+  if(p.length >= 2){
+    const ult = p[p.length-1];
+    let ref = p[0];
+    for(let i=p.length-2;i>=0;i--){ if(daysBetween(p[i].fecha, ult.fecha) >= 14){ ref = p[i]; break; } }
+    const dias = daysBetween(ref.fecha, ult.fecha);
+    if(dias >= 7) ritmo = (ult.kg-ref.kg)/(dias/7);
+  }
+
+  const volumenSemanas = Datos.volumenPorSemana(8);
+
+  return `
+    <div class="card">
+      <h2>Resumen</h2>
+      <div class="cifras">
+        <div class="cifra">
+          <span class="v">${sesiones.length}</span>
+          <span class="k">Sesiones</span>
+          <span class="d">${recientes.length} en 4 semanas</span>
+        </div>
+        <div class="cifra">
+          <span class="v">${porSemana}</span>
+          <span class="k">Por semana</span>
+          <span class="d">media de 4 semanas</span>
+        </div>
+        <div class="cifra">
+          <span class="v">${(volumenTotal/1000).toFixed(1).replace(".",",")}<span style="font-size:.8rem;font-weight:600;"> t</span></span>
+          <span class="k">Levantado</span>
+          <span class="d">${seriesRecientes.length} series en 4 sem.</span>
+        </div>
+        <div class="cifra">
+          <span class="v">${ritmo===null? "—" : (ritmo>0?"+":"")+ritmo.toFixed(2).replace(".",",")}</span>
+          <span class="k">kg / semana</span>
+          <span class="d">${ritmo===null? "faltan pesajes" : "objetivo +0,30 a +0,50"}</span>
+        </div>
+      </div>
+      ${volumenSemanas.length>1 ? `
+        <div class="eyebrow" style="margin:18px 0 8px;">Volumen por semana · kg movidos</div>
+        ${svgBarChart(volumenSemanas)}` : ""}
+    </div>`;
+}
+
+function svgBarChart(points){
+  const w = 300, h = 90, pad = 6;
+  const max = Math.max(...points.map(p=>p.v)) || 1;
+  const hueco = 4;
+  const ancho = (w - pad*2 - hueco*(points.length-1)) / points.length;
+  const barras = points.map((p,i)=>{
+    const alto = Math.max(2, (p.v/max)*(h-pad*2));
+    const x = pad + i*(ancho+hueco);
+    const ultima = i===points.length-1;
+    return `<rect x="${x.toFixed(1)}" y="${(h-pad-alto).toFixed(1)}" width="${ancho.toFixed(1)}"
+      height="${alto.toFixed(1)}" rx="2" fill="${ultima? "#D7F94F" : "#3A3A42"}"/>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:90px;display:block;">${barras}</svg>
+    <div class="row" style="justify-content:space-between;font-size:.66rem;text-transform:uppercase;
+      letter-spacing:.1em;color:var(--dim);font-weight:600;margin-top:6px;">
+      <span>${fmtFecha(points[0].fecha).slice(0,5)}</span>
+      <span>${points[points.length-1].v.toLocaleString("es-ES")} kg esta semana</span>
+    </div>`;
+}
 
 function svgLineChart(points, opts){
   opts = opts || {};

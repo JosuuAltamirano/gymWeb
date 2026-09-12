@@ -45,7 +45,7 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
   background:rgba(10,10,11,.88);border-bottom:1px solid var(--line);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
 #topbar .row{display:flex;justify-content:space-between;align-items:center;}
-#topTitle{font-size:.72rem;text-transform:uppercase;letter-spacing:.24em;font-weight:700;}
+#topTitle{font-size:.66rem;text-transform:uppercase;letter-spacing:.28em;font-weight:600;color:var(--dim);}
 #topbar .sub{color:var(--dim);font-size:.64rem;letter-spacing:.14em;
   text-transform:uppercase;font-weight:600;margin-top:4px;}
 
@@ -65,7 +65,10 @@ section.screen.active{display:block;}
   font-family:inherit;letter-spacing:-.01em;cursor:pointer;width:100%;
   transition:transform .06s ease,opacity .12s ease;}
 .btn:active{transform:scale(.985);opacity:.92;}
-.btn-primary,.btn-good{background:var(--volt);border-color:var(--volt);color:var(--volt-ink);
+/* Hueso para la acción, volt solo para el logro y el dato. */
+.btn-primary{background:var(--ink);border-color:var(--ink);color:var(--bg);
+  font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.08em;}
+.btn-good{background:var(--volt);border-color:var(--volt);color:var(--volt-ink);
   font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.08em;}
 .btn-ghost{background:transparent;border-color:var(--line);color:var(--dim);}
 .btn-small{min-height:44px;padding:0 14px;font-size:.85rem;width:auto;}
@@ -167,7 +170,7 @@ details .body{margin-top:14px;font-size:.92rem;}
 .switch2 button{flex:1;background:transparent;color:var(--dim);border:none;border-radius:10px;
   padding:12px 6px;font-weight:600;font-size:.76rem;min-height:44px;cursor:pointer;
   font-family:inherit;text-transform:uppercase;letter-spacing:.08em;}
-.switch2 button.active{background:var(--volt);color:var(--volt-ink);font-weight:700;}
+.switch2 button.active{background:#30303A;color:var(--ink);font-weight:700;}
 
 .rescate{position:fixed;right:16px;z-index:15;cursor:pointer;font-family:inherit;
   bottom:calc(74px + env(safe-area-inset-bottom));
@@ -188,3 +191,22 @@ details .body{margin-top:14px;font-size:.92rem;}
   padding:6px 8px;cursor:pointer;font-family:inherit;}
 
 .chart{width:100%;height:150px;display:block;}
+
+.cifras{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);
+border-radius:14px;overflow:hidden;margin-top:4px;}
+.cifra{background:var(--surf);padding:14px 16px;}
+.cifra .v{font-size:1.45rem;font-weight:700;font-variant-numeric:tabular-nums;
+letter-spacing:-.03em;display:block;}
+.cifra .k{font-size:.6rem;text-transform:uppercase;letter-spacing:.14em;
+color:var(--dim);font-weight:600;margin-top:3px;display:block;}
+.cifra .d{font-size:.68rem;color:var(--dim);font-variant-numeric:tabular-nums;}
+
+.porque{background:none;border:none;color:var(--dim);font-family:inherit;cursor:pointer;
+font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;font-weight:600;
+padding:6px 0;text-align:left;text-decoration:underline;text-underline-offset:3px;}
+
+.regla{display:grid;grid-template-columns:auto 1fr;gap:10px 12px;font-size:.88rem;
+align-items:baseline;}
+.regla dt{color:var(--dim);font-size:.64rem;text-transform:uppercase;
+letter-spacing:.12em;font-weight:600;white-space:nowrap;}
+.regla dd{margin:0;font-variant-numeric:tabular-nums;}

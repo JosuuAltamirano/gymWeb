@@ -6,10 +6,33 @@ con una sola mano.
 
 ## Qué es
 
-- **index.html** — toda la app: interfaz, datos de la rutina/comida/guía y lógica en un único archivo.
-- **manifest.json** + **icon.svg** + **sw.js** — lo mínimo para poder "Añadir a pantalla de inicio" e instalar la web como una app que funciona sin internet una vez cargada.
+Sin backend, sin cuentas, sin build y sin dependencias externas. Todo funciona abriendo la página; los datos viven en el móvil.
 
-No hay backend, no hay build, no hay dependencias externas. Todo se guarda en el navegador (`localStorage`), no hay cuentas ni login.
+```
+index.html          estructura y navegación
+css/estilos.css     sistema visual
+js/datos.js         rutinas, técnica, alimentos, guía — los datos fijos
+js/db.js            base de datos local y capa de acceso
+js/app.js           pantallas y lógica
+sw.js, manifest.json, icon.svg    instalación y funcionamiento sin internet
+```
+
+## La base de datos
+
+IndexedDB normalizada, con índices y migraciones versionadas. El esquema:
+
+| Tabla | Clave | Índices | Qué guarda |
+|---|---|---|---|
+| `sesiones` | id | fecha, diaKey | cada entreno: nombre, modo, volumen, duración |
+| `series` | id | ejercicio, sesion, (ejercicio, fecha) | una fila por serie: peso y repeticiones |
+| `pesajes` | fecha | — | peso corporal |
+| `medidas` | fecha | — | brazo, pecho, muslo, gemelo, antebrazo |
+| `comidas` | id | fecha | cada cosa que anotas, con proteína y kcal |
+| `ajustes` | clave | — | modo de semana, sesión en curso, checklist... |
+
+Las series son filas independientes, así que consultar el histórico de un ejercicio, su récord o el volumen de una semana es una consulta, no recorrer un bloque entero. Al arrancar se carga todo en memoria (un año de entrenos son unos miles de filas) y por eso la interfaz responde al instante.
+
+Si existen datos del formato antiguo, se migran solos la primera vez: se reconstruyen sesiones y series a partir del historial por ejercicio. El bloque antiguo no se borra nunca.
 
 ## Cómo usarla
 
@@ -44,8 +67,8 @@ Todo el contenido (rutinas, técnica, comida, suplementos, sueño...) viene dire
 
 Todo se guarda solo, en el móvil, cada vez que tocas algo. No hay cuentas ni servidor. Tres capas para que el progreso no se pierda:
 
-1. **`localStorage`** — el guardado normal, instantáneo en cada cambio.
-2. **Copia en IndexedDB** — se escribe en paralelo. Safari en iPhone puede vaciar `localStorage` si pasas días sin abrir la web; si eso ocurre, al abrirla los datos se restauran solos desde aquí.
+1. **IndexedDB** — el registro principal, escrito en cada cambio.
+2. **Copia de rescate en `localStorage`** — se reescribe en paralelo. Si la base se vacía, al abrir la web se reconstruye desde aquí.
 3. **Exportar/importar `.json`** desde PROGRESO — la red de seguridad si cambias de móvil o borras los datos del navegador. La web te recuerda hacerlo si hace más de un mes.
 
 Además pide al navegador almacenamiento persistente (`navigator.storage.persist()`), que evita que el sistema borre los datos para hacer sitio.
