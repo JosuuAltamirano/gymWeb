@@ -2,8 +2,14 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
+
+# Una rama con PR abierta se probaba dos veces, una por el push y otra por la
+# PR. Con esto se prueba una vez, y un push nuevo cancela la tanda anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verificar:
