@@ -18,7 +18,7 @@
     --card2:#1f232a;
     --border:#2a2f37;
     --text:#eceef1;
-    --muted:#8a9099;
+    --muted:#9aa1ac;
     --accent:#ff5a36;
     --accent2:#ffcf3f;
     --good:#3ddc84;
@@ -108,7 +108,7 @@
   .exset .chk.on{background:var(--good);color:#062015;border-color:var(--good);}
   .exname{font-size:1.05rem;font-weight:700;}
   .extarget{color:var(--accent2);font-size:.85rem;margin-bottom:2px;}
-  .exlast{color:var(--muted);font-size:.78rem;margin-bottom:8px;}
+  .exlast{color:var(--muted);font-size:.84rem;margin-bottom:8px;}
   .exdone{opacity:.55;}
   #resttimer{position:fixed;left:0;right:0;bottom:70px;background:var(--accent);color:#1a0d08;
     padding:10px 16px;display:none;z-index:40;font-weight:700;text-align:center;}
@@ -464,7 +464,8 @@ function defaultState(){
     fotos:{ultimaFecha:null},
     subirPeso:{},
     sesionesHechas:[],
-    deload:{ultimaFecha:null}
+    deload:{ultimaFecha:null},
+    arranque:{}
   };
 }
 let state = loadState();
@@ -599,17 +600,38 @@ RENDERERS.hoy = function(){
         <div class="muted">día${dias===1?"":"s"} para empezar el plan</div>
       </div>
       <div class="card">
+        <h2>Antes de empezar</h2>
+        <p class="muted" style="font-size:.82rem;">El 15 toca apuntarse, foto del día 1 y peso inicial. Márcalo aquí mismo.</p>
+        ${cardPesoHTML(hoyISO, true, "Peso inicial. En ayunas, después de mear.")}
+        <hr>
+        <div class="kpi" style="margin-bottom:6px;">
+          <span class="muted" style="font-size:.85rem;">Foto del día 1</span>
+          <span class="muted" style="font-size:.8rem;">${state.fotos.ultimaFecha? "hecha el "+fmtFecha(state.fotos.ultimaFecha) : "pendiente"}</span>
+        </div>
+        ${state.fotos.ultimaFecha? "" : `<button class="btn btn-small" id="btnFotoDia1">Ya me la he hecho</button>`}
+        <hr>
+        <p class="muted" style="font-size:.82rem;">Las sesiones suaves del 15 y el 16 también cuentan: elígelas aquí y baja el peso.</p>
+        <button class="btn btn-ghost btn-small" id="btnOtraSesion" style="width:100%;">Entrenar una sesión suave</button>
+      </div>
+      <div class="card">
         <h2>Calendario de arranque</h2>
-        <table>
-          <tbody>
-          ${CALENDARIO.map(c=>`<tr><td style="white-space:nowrap;">${escapeHtml(c.fecha)}</td><td class="${c.destacado?'destacado':''}">${escapeHtml(c.que)}</td></tr>`).join("")}
-          </tbody>
-        </table>
+        <p class="muted" style="font-size:.78rem;">Toca cada línea al hacerla.</p>
+        ${CALENDARIO.map((c,i)=>{
+          const hecho = state.arranque[i];
+          return `<button class="btn btn-ghost" data-hito="${i}" style="justify-content:flex-start;text-align:left;height:auto;min-height:48px;padding:8px 10px;margin-bottom:6px;${hecho?'opacity:.5;':''}">
+            <span style="margin-right:8px;">${hecho?'✓':'○'}</span>
+            <span style="font-weight:400;">
+              <span class="muted">${escapeHtml(c.fecha)}</span><br>
+              <span class="${c.destacado?'destacado':''}">${escapeHtml(c.que)}</span>
+            </span>
+          </button>`;
+        }).join("")}
       </div>
       <div class="card">
         <p class="frase">"${randFrase()}"</p>
       </div>
     `;
+    engancharHoy(hoyISO, null, false);
     return;
   }
 
@@ -663,18 +685,68 @@ RENDERERS.hoy = function(){
         <b>${ultimoPeso? ultimoPeso.kg+" kg" : PERFIL.peso_inicial_kg+" kg (inicial)"}</b>
       </div>
       <div class="muted" style="font-size:.78rem;">${ultimoPeso? "Último pesaje: "+fmtFecha(ultimoPeso.fecha) : "Aún no has registrado ningún pesaje."}</div>
-      ${tocaPesaje ? `
-        <hr>
-        <p class="muted" style="font-size:.82rem;">Toca pesarte. En ayunas, después de mear.</p>
-        <div class="row">
-          <input type="number" id="pesoRapido" placeholder="kg" step="0.1" style="flex:1;">
-          <button class="btn btn-primary btn-small" id="btnPesoRapido">Guardar</button>
-        </div>` : ""}
+      ${cardPesoHTML(hoyISO, tocaPesaje, "Toca pesarte. En ayunas, después de mear.")}
     </div>
+
+    ${cardProteinaHTML()}
+
+    ${cardChecklistNocheHTML()}
 
     <button class="rescate" id="btnRescate">😩 No tengo ganas</button>
   `;
 
+  engancharHoy(hoyISO, diaKey, esDescanso);
+};
+
+// Trozos de HOY que se reutilizan en la cuenta atrás y en el día a día.
+function cardPesoHTML(hoyISO, mostrar, texto){
+  if(!mostrar) return "";
+  return `
+    <hr>
+    <p class="muted" style="font-size:.82rem;">${escapeHtml(texto)}</p>
+    <div class="row">
+      <input type="number" id="pesoRapido" placeholder="kg" step="0.1" style="flex:1;">
+      <button class="btn btn-primary btn-small" id="btnPesoRapido">Guardar</button>
+    </div>`;
+}
+
+function cardProteinaHTML(){
+  ensureProteinaHoy();
+  const g = state.proteina.gramos, obj = PERFIL.proteina_objetivo_g;
+  const pct = Math.min(100, Math.round((g/obj)*100));
+  return `
+    <div class="card" id="cardProteina" style="cursor:pointer;">
+      <div class="kpi">
+        <span class="muted">Proteína de hoy</span>
+        <b>${g.toFixed(0)} / ${obj} g</b>
+      </div>
+      <div class="progress ${g>=obj?'done':''}" style="margin-top:8px;"><div style="width:${pct}%;"></div></div>
+    </div>`;
+}
+
+// "No decido por la mañana si voy. Eso ya se decidió anoche."
+function cardChecklistNocheHTML(){
+  const ahora = new Date();
+  if(ahora.getHours() < 20) return "";
+  const manana = new Date(ahora.getTime() + 86400000);
+  const dk = getDiaKey(manana);
+  const dia = getRutinaDia(state.modo, dk);
+  if(!dia || !dia.ejercicios || !dia.ejercicios.length) return "";
+  const hoyISO = todayStr();
+  if(state.checklist.fecha !== hoyISO) state.checklist = {fecha:hoyISO, marcados:{}};
+  const faltan = CHECKLIST_ITEMS.filter(it=>!state.checklist.marcados[it.id]);
+  return `
+    <div class="card" style="border-color:${faltan.length? 'var(--accent2)':'var(--border)'};">
+      <h2>Mañana toca ${escapeHtml(dia.nombre)}${dia.hora? " a las "+dia.hora:""}</h2>
+      <p class="muted" style="font-size:.82rem;">Déjalo listo ahora. Por la mañana ya no se decide.</p>
+      ${CHECKLIST_ITEMS.map(it=>`
+        <button class="btn ${state.checklist.marcados[it.id]?'btn-good':''}" data-item="${it.id}" style="justify-content:flex-start;margin-bottom:6px;">
+          ${state.checklist.marcados[it.id]?'✓':'○'}&nbsp;&nbsp;${escapeHtml(it.txt)}
+        </button>`).join("")}
+    </div>`;
+}
+
+function engancharHoy(hoyISO, diaKey, esDescanso){
   const btn = document.getElementById("btnEmpezar");
   if(btn) btn.addEventListener("click", ()=> iniciarSesion(diaKey, false));
 
@@ -705,7 +777,37 @@ RENDERERS.hoy = function(){
     RENDERERS.hoy();
   });
 
-  document.getElementById("btnOtraSesion").addEventListener("click", ()=>{
+  const btnFoto1 = document.getElementById("btnFotoDia1");
+  if(btnFoto1) btnFoto1.addEventListener("click", ()=>{
+    state.fotos.ultimaFecha = hoyISO;
+    saveState();
+    RENDERERS.hoy();
+    toast("Foto del día 1 marcada.");
+  });
+
+  document.querySelectorAll("[data-hito]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const i = b.dataset.hito;
+      state.arranque[i] = !state.arranque[i];
+      saveState();
+      RENDERERS.hoy();
+    });
+  });
+
+  const cardProte = document.getElementById("cardProteina");
+  if(cardProte) cardProte.addEventListener("click", ()=> switchScreen("comida"));
+
+  document.querySelectorAll("#screen-hoy [data-item]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const id = b.dataset.item;
+      state.checklist.marcados[id] = !state.checklist.marcados[id];
+      saveState();
+      RENDERERS.hoy();
+    });
+  });
+
+  const btnOtra = document.getElementById("btnOtraSesion");
+  if(btnOtra) btnOtra.addEventListener("click", ()=>{
     const disponibles = DIAS_ORDEN.filter(dk=>{
       const d = getRutinaDia(state.modo, dk);
       return d && d.ejercicios && d.ejercicios.length;
@@ -730,7 +832,8 @@ RENDERERS.hoy = function(){
     });
   });
 
-  document.getElementById("btnRescate").addEventListener("click", ()=>{
+  const btnResc = document.getElementById("btnRescate");
+  if(btnResc) btnResc.addEventListener("click", ()=>{
     showModal(`
       <h2>Oye.</h2>
       <p style="font-size:1.05rem;">Ve, haz la mitad y vete.</p>
@@ -746,7 +849,7 @@ RENDERERS.hoy = function(){
       if(!esDescanso) iniciarSesion(diaKey, true);
     });
   });
-};
+}
 
 /* ============================= SESIÓN ============================= */
 
@@ -774,6 +877,7 @@ function arrancarSesion(diaKey, modoRapido){
     fecha: todayStr(),
     diaKey, nombre: dia.nombre, modo: state.modo,
     modoRapido: !!modoRapido,
+    inicio: Date.now(),
     ejercicios: dia.ejercicios.map(ex=>({
       id:ex.id, nombre:ex.nombre, series:ex.series, repes:ex.repes,
       descanso_seg:ex.descanso_seg||90, tipo:ex.tipo,
@@ -825,6 +929,17 @@ function ultimaVez(exId){
   return h[h.length-1];
 }
 
+function textoTiempoSesion(){
+  const s = state.sesionActual;
+  if(!s || !s.inicio) return "";
+  const min = Math.floor((Date.now()-s.inicio)/60000);
+  return min < 1 ? "acabas de empezar" : min+" min";
+}
+setInterval(()=>{
+  const el = document.getElementById("tiempoSesion");
+  if(el) el.textContent = textoTiempoSesion();
+}, 15000);
+
 RENDERERS.sesion = function(){
   const el = document.getElementById("screen-sesion");
   const s = state.sesionActual;
@@ -842,7 +957,7 @@ RENDERERS.sesion = function(){
   el.innerHTML = `
     <div class="card tight row" style="justify-content:space-between;align-items:center;">
       <div>
-        <div class="muted" style="font-size:.78rem;">${DIAS_LABEL[s.diaKey]}</div>
+        <div class="muted" style="font-size:.78rem;">${DIAS_LABEL[s.diaKey]} · <span id="tiempoSesion">${textoTiempoSesion()}</span></div>
         <b>${escapeHtml(s.nombre)}</b>
       </div>
       <span class="badge">${totalCompletos} de ${s.ejercicios.length} ejercicios</span>
@@ -860,6 +975,12 @@ RENDERERS.sesion = function(){
       <div class="row">
         <button class="btn col ${s.modoRapido?'btn-primary':''}" id="btnRapido">${s.modoRapido? "MODO RÁPIDO ✓" : "Activar modo rápido"}</button>
       </div>
+      ${(()=>{
+        if(!s.modoRapido) return "";
+        const fuera = s.ejercicios.slice(3).filter(ex=>tipoEjercicio(ex.id, ex.tipo)==="punto_debil");
+        if(!fuera.length) return "";
+        return `<p style="font-size:.8rem;color:var(--accent2);margin:8px 0 0 0;">Deja fuera ${fuera.map(e=>escapeHtml(e.nombre)).join(" y ")}. Si te queda un minuto, mete aunque sean 2 series: es justo lo que más te cuesta.</p>`;
+      })()}
     </div>
 
     <button class="btn btn-good" id="btnTerminar">TERMINAR SESIÓN</button>
