@@ -1,5 +1,6 @@
-const CACHE = "mi-gym-v1";
-const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const CACHE = "mi-gym-v2";
+const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg",
+  "./css/estilos.css", "./js/datos.js", "./js/db.js", "./js/app.js"];
 
 self.addEventListener("install", e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
