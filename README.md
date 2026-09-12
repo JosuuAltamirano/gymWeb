@@ -9,13 +9,35 @@ con una sola mano.
 Sin backend, sin cuentas, sin build y sin dependencias externas. Todo funciona abriendo la página; los datos viven en el móvil.
 
 ```
-index.html          estructura y navegación
-css/estilos.css     sistema visual
-js/datos.js         rutinas, técnica, alimentos, guía — los datos fijos
-js/db.js            base de datos local y capa de acceso
-js/app.js           pantallas y lógica
-sw.js, manifest.json, icon.svg    instalación y funcionamiento sin internet
+index.html                estructura y navegación
+css/estilos.css           sistema visual
+js/datos.js               rutinas, técnica, alimentos, guía — los datos fijos
+js/db.js                  base de datos local y capa de acceso
+js/avisos.js              calendario (.ics) y aviso de descanso
+js/app.js                 pantallas y lógica
+sw.js                     funcionamiento sin internet y actualizaciones
+manifest.json, icon.svg   instalación en el móvil
+tests/                    pruebas de extremo a extremo
+.github/workflows/        CI y publicación automática
 ```
+
+### Desarrollo
+
+```bash
+npm install                  # solo eslint y playwright
+npx playwright install chromium
+npm run serve                # http://localhost:8080
+npm test                     # 54 pruebas sobre un navegador real
+npm run lint
+```
+
+Las pruebas abren la web en Chromium con el reloj congelado en una fecha concreta, así se puede comprobar cómo se comporta un lunes a las 6:05, un domingo por la noche o durante una semana de obra. Cada archivo levanta su propio servidor en un puerto libre y su propio navegador.
+
+Cada `push` pasa lint y pruebas en CI; cada `push` a `main` publica en GitHub Pages.
+
+### Versiones
+
+`VERSION` en `js/datos.js` es la única fuente: el service worker se registra con ella (`sw.js?v=…`), cada versión usa su propia caché y las anteriores se borran. Una versión nueva **no** se instala sola a mitad de sesión: la web avisa y se actualiza cuando lo aceptas, y nunca mientras estás entrenando.
 
 ## La base de datos
 
@@ -72,6 +94,13 @@ Todo se guarda solo, en el móvil, cada vez que tocas algo. No hay cuentas ni se
 3. **Exportar/importar `.json`** desde PROGRESO — la red de seguridad si cambias de móvil o borras los datos del navegador. La web te recuerda hacerlo si hace más de un mes.
 
 Además pide al navegador almacenamiento persistente (`navigator.storage.persist()`), que evita que el sistema borre los datos para hacer sitio.
+
+## Avisos
+
+Una web sin servidor no puede notificarte nada con el móvil guardado, así que no se simula:
+
+- **Calendario (.ics)** — desde PROGRESO se descargan tus entrenos, el recordatorio de preparar la mochila la noche antes, el pesaje del domingo y la foto mensual, cada uno con su alarma. Los avisos los da el calendario del móvil, que sí funciona siempre.
+- **Fin del descanso** — si sales de la web mientras descansas entre series, puede avisarte al terminar la cuenta atrás (permiso opcional).
 
 ## Diseño
 

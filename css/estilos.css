@@ -86,7 +86,8 @@ input,select,textarea{width:100%;background:var(--surf-2);color:var(--ink);
   min-height:48px;font-family:inherit;font-variant-numeric:tabular-nums;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--volt);}
 input::placeholder{color:var(--faint);}
-label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;
+/* :not(.btn) para que no afecte a los controles de archivo disfrazados de botón. */
+label:not(.btn){display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;
   color:var(--dim);font-weight:600;margin-bottom:6px;}
 
 .badge{display:inline-block;padding:6px 10px;border-radius:8px;background:var(--surf-2);

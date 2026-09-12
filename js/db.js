@@ -74,8 +74,13 @@ const Datos = {
       this.bd.onversionchange = ()=>{ try{ this.bd.close(); }catch(e){} };
       this.cargarTodo(()=>{
         this.migrarSiHaceFalta(()=>{
-          this.rescatarSiVacia();
-          alTerminar();
+          this.rescatarSiVacia(()=>{
+            /* Rehace la copia de rescate en cada arranque: si el navegador
+               vació localStorage, sin esto la red de seguridad no existiría
+               hasta el siguiente cambio. */
+            this.escribirRescate();
+            alTerminar();
+          });
         });
       });
     };
@@ -317,20 +322,34 @@ const Datos = {
     };
   },
 
+  hayDatos(){
+    return !!(this.series.length || this.pesajes.length || this.sesiones.length);
+  },
+
   guardarRescate(){
     clearTimeout(this._rescate);
-    this._rescate = setTimeout(()=>{
+    this._rescate = setTimeout(()=> this.escribirRescate(), 500);
+  },
+
+  escribirRescate(){
+    /* Nunca pisar una copia con datos por una vacía: si la base se ha
+       vaciado, esta copia es lo único que queda. */
+    if(!this.hayDatos()){
       try{
-        localStorage.setItem(CLAVE_RESCATE, JSON.stringify(this.instantanea()));
-        this._rescateRoto = false;
-      }catch(e){
-        // Modo privado o cuota llena: avisa una vez en lugar de callarse.
-        if(!this._rescateRoto && !this.disponible && typeof toast === "function"){
-          this._rescateRoto = true;
-          toast("Este navegador no deja guardar datos. Exporta una copia desde PROGRESO.", 6000);
-        }
+        const previa = JSON.parse(localStorage.getItem(CLAVE_RESCATE) || "null");
+        if(previa && ((previa.series||[]).length || (previa.pesajes||[]).length)) return;
+      }catch(e){}
+    }
+    try{
+      localStorage.setItem(CLAVE_RESCATE, JSON.stringify(this.instantanea()));
+      this._rescateRoto = false;
+    }catch(e){
+      // Modo privado o cuota llena: avisa una vez en lugar de callarse.
+      if(!this._rescateRoto && !this.disponible && typeof toast === "function"){
+        this._rescateRoto = true;
+        toast("Este navegador no deja guardar datos. Exporta una copia desde PROGRESO.", 6000);
       }
-    }, 500);
+    }
   },
 
   cargarDeRescate(){
@@ -346,12 +365,13 @@ const Datos = {
   },
 
   // Si la base está vacía pero hay copia de rescate, la reconstruye.
-  rescatarSiVacia(){
-    if(this.sesiones.length || this.pesajes.length || this.series.length) return;
+  rescatarSiVacia(alTerminar){
+    const seguir = alTerminar || (()=>{});
+    if(this.hayDatos()) { seguir(); return; }
     let copia = null;
     try{ copia = JSON.parse(localStorage.getItem(CLAVE_RESCATE) || "null"); }catch(e){}
-    if(!copia || !((copia.series||[]).length || (copia.pesajes||[]).length)) return;
-    this.importar(copia, ()=>{});
+    if(!copia || !((copia.series||[]).length || (copia.pesajes||[]).length)){ seguir(); return; }
+    this.importar(copia, seguir);
   },
 
   importar(datos, alTerminar){

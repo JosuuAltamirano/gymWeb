@@ -1,3 +1,8 @@
+/* Datos fijos: rutina, técnica, comida y guía. Aquí es donde se edita si
+   cambia el plan; la lógica no se toca. */
+
+const VERSION = "1.1.0";
+
 /* ============================= DATOS ============================= */
 
 const PERFIL = {

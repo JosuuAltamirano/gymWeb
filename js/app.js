@@ -622,7 +622,6 @@ function currentEjercicios(){
 }
 
 function onSetInput(e){
-  const s = state.sesionActual;
   const lista = currentEjercicios();
   const exIdx = Number(e.target.dataset.ex);
   const setIdx = Number(e.target.dataset.set);
@@ -682,6 +681,7 @@ function runRestTimer(fin){
     if(restante<=0){
       stopRestTimer();
       if(navigator.vibrate) navigator.vibrate([200,100,200]);
+      Avisos.descansoTerminado();
       return;
     }
     const m = Math.floor(restante/60), sec = restante%60;
@@ -896,6 +896,22 @@ RENDERERS.progreso = function(){
     </div>
 
     <div class="card">
+      <h2>Recordatorios</h2>
+      <p class="muted" style="font-size:.82rem;">
+        Una web no puede avisarte con el móvil guardado. El calendario sí.
+        Esto te descarga tus entrenos, el aviso de preparar la mochila la noche
+        antes, el pesaje del domingo y la foto mensual; lo abres y se añaden.
+      </p>
+      <button class="btn btn-small" id="btnCalendario">Añadir al calendario</button>
+      <hr>
+      <p class="muted" style="font-size:.82rem;">
+        Y si sales de la web mientras descansas entre series, puede avisarte al
+        terminar la cuenta atrás.
+      </p>
+      <button class="btn btn-small" id="btnPermisoAviso">${Avisos.permitido? "Avisos activados" : "Activar aviso de descanso"}</button>
+    </div>
+
+    <div class="card">
       <h2>Tus datos</h2>
       <p class="muted" style="font-size:.82rem;">
         Se guardan solos en este móvil cada vez que tocas algo, con copia de seguridad interna.
@@ -955,6 +971,19 @@ RENDERERS.progreso = function(){
     toast("Medidas guardadas.");
   });
 
+  document.getElementById("btnCalendario").addEventListener("click", ()=>{
+    Avisos.descargarCalendario(state.modo);
+    toast("Abre el archivo descargado para añadirlo a tu calendario.", 5000);
+  });
+
+  document.getElementById("btnPermisoAviso").addEventListener("click", e=>{
+    Avisos.pedirPermiso().then(ok=>{
+      toast(ok ? "Listo: te avisará al acabar el descanso."
+               : "El navegador no ha dado permiso para avisar.");
+      if(ok) e.target.textContent = "Avisos activados";
+    });
+  });
+
   document.getElementById("btnExport").addEventListener("click", ()=>{
     const blob = new Blob([JSON.stringify(Datos.instantanea(),null,2)], {type:"application/json"});
     const url = URL.createObjectURL(blob);
@@ -992,7 +1021,6 @@ function cardResumenHTML(){
       <p class="muted">Cuando registres la primera sesión, aquí salen las cifras.</p>
     </div>`;
   }
-  const hoy = todayStr();
   const desde28 = new Date(Date.now() - 28*86400000).toISOString().slice(0,10);
   const recientes = sesiones.filter(s=> s.fecha >= desde28);
   const seriesRecientes = Datos.series.filter(s=> s.fecha >= desde28);
@@ -1427,10 +1455,48 @@ RENDERERS.check = function(){
 Datos.abrir(()=>{
   pedirAlmacenamientoPersistente();
   RENDERERS.hoy();
+  // Señal de "ya está todo cargado": la usan los tests para no esperar a ciegas.
+  document.documentElement.dataset.listo = "1";
 });
 
+/* El service worker se registra con la versión en la URL: al cambiarla, el
+   navegador detecta un archivo distinto y busca la versión nueva. No se
+   instala a la fuerza (cambiar los archivos a media sesión rompe cosas):
+   se avisa y se actualiza cuando tú quieras. */
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.register('sw.js?v=' + VERSION).then(registro=>{
+      registro.addEventListener('updatefound', ()=>{
+        const entrante = registro.installing;
+        if(!entrante) return;
+        entrante.addEventListener('statechange', ()=>{
+          if(entrante.state === 'installed' && navigator.serviceWorker.controller){
+            avisarDeActualizacion(entrante);
+          }
+        });
+      });
+    }).catch(()=>{});
+
+    let recargando = false;
+    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+      if(recargando) return;
+      recargando = true;
+      window.location.reload();
+    });
   });
+}
+
+function avisarDeActualizacion(entrante){
+  // Nunca en mitad de un entreno: se avisa al terminar.
+  if(state.sesionActual) return;
+  const root = document.getElementById("toastRoot");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `Hay una versión nueva.
+    <button class="btn btn-small btn-primary" style="margin-top:8px;width:100%;">Actualizar</button>`;
+  el.querySelector("button").addEventListener("click", ()=>{
+    entrante.postMessage({tipo:"activar"});
+    el.remove();
+  });
+  root.appendChild(el);
 }
