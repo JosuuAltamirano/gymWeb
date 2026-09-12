@@ -751,6 +751,24 @@ RENDERERS.hoy = function(){
 /* ============================= SESIÓN ============================= */
 
 function iniciarSesion(diaKey, modoRapido){
+  const abierta = state.sesionActual;
+  const tieneDatos = abierta && abierta.ejercicios.some(ex=>ex.sets.some(st=>st.done || st.peso!==""));
+  if(tieneDatos){
+    showModal(`
+      <h2>Tienes una sesión abierta</h2>
+      <p class="muted">${escapeHtml(abierta.nombre)} del ${fmtFecha(abierta.fecha)}, con series ya apuntadas. Si empiezas otra, esa se pierde.</p>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn btn-primary col" id="mSeguir">Seguir con esa</button>
+        <button class="btn col btn-danger" id="mNueva">Empezar la nueva</button>
+      </div>`, {center:true});
+    document.getElementById("mSeguir").addEventListener("click", ()=>{ closeModal(); switchScreen("sesion"); });
+    document.getElementById("mNueva").addEventListener("click", ()=>{ closeModal(); arrancarSesion(diaKey, modoRapido); });
+    return;
+  }
+  arrancarSesion(diaKey, modoRapido);
+}
+
+function arrancarSesion(diaKey, modoRapido){
   const dia = getRutinaDia(state.modo, diaKey);
   state.sesionActual = {
     fecha: todayStr(),
@@ -1118,13 +1136,17 @@ RENDERERS.progreso = function(){
   const mostrarFoto = !state.fotos.ultimaFecha || daysBetween(state.fotos.ultimaFecha, hoy) >= 30;
 
   const exIds = Object.keys(state.historial).filter(id=>state.historial[id].length);
+  // Empieza en null, no en 0: con dominadas a peso corporal (0 kg) el récord
+  // existe igual y si no la fecha se queda vacía.
   const prs = exIds.map(id=>{
-    let max = 0, fecha="";
+    let max = null, fecha = "", repes = 0;
     state.historial[id].forEach(ses=> ses.series.forEach(st=>{
-      if(st.peso>max){ max=st.peso; fecha=ses.fecha; }
+      if(max===null || st.peso>max || (st.peso===max && st.repes>repes)){
+        max = st.peso; fecha = ses.fecha; repes = st.repes;
+      }
     }));
-    return {id, nombre:nombreEjercicio(id), max, fecha};
-  }).sort((a,b)=> b.max-a.max);
+    return {id, nombre:nombreEjercicio(id), max, fecha, repes};
+  }).filter(p=>p.max!==null).sort((a,b)=> b.max-a.max);
 
   el.innerHTML = `
     <div class="card">
@@ -1157,7 +1179,7 @@ RENDERERS.progreso = function(){
 
     <div class="card">
       <h2>Récords personales</h2>
-      ${prs.length? `<table><tbody>${prs.map(p=>`<tr><td>${escapeHtml(p.nombre)}</td><td>${p.max} kg</td><td class="muted">${fmtFecha(p.fecha)}</td></tr>`).join("")}</tbody></table>`
+      ${prs.length? `<table><tbody>${prs.map(p=>`<tr><td>${escapeHtml(p.nombre)}</td><td>${p.max} kg × ${p.repes}</td><td class="muted">${fmtFecha(p.fecha)}</td></tr>`).join("")}</tbody></table>`
         : `<p class="muted">Aún no hay sesiones registradas.</p>`}
     </div>
 
@@ -1184,7 +1206,7 @@ RENDERERS.progreso = function(){
       ${state.medidas.length? `
         <table style="margin-top:10px;">
           <thead><tr><th>Fecha</th><th>Brazo</th><th>Pecho</th><th>Muslo</th><th>Gemelo</th><th>Antebr.</th></tr></thead>
-          <tbody>${state.medidas.slice().reverse().map(m=>`<tr><td>${fmtFecha(m.fecha)}</td><td>${m.brazo||"-"}</td><td>${m.pecho||"-"}</td><td>${m.muslo||"-"}</td><td>${m.gemelo||"-"}</td><td>${m.antebrazo||"-"}</td></tr>`).join("")}</tbody>
+          <tbody>${state.medidas.slice().reverse().map(m=>`<tr><td>${fmtFecha(m.fecha)}</td><td>${escapeHtml(m.brazo||"-")}</td><td>${escapeHtml(m.pecho||"-")}</td><td>${escapeHtml(m.muslo||"-")}</td><td>${escapeHtml(m.gemelo||"-")}</td><td>${escapeHtml(m.antebrazo||"-")}</td></tr>`).join("")}</tbody>
         </table>` : ""}
     </div>
 
@@ -1324,6 +1346,8 @@ function avisoRitmoPeso(){
   const log = state.pesoLog;
   if(log.length < 2) return null;
   const ultimo = log[log.length-1];
+  // Si hace semanas que no te pesas, el consejo no vale: primero pésate.
+  if(daysBetween(ultimo.fecha, todayStr()) > 10) return null;
   let ref = null;
   for(let i=log.length-2; i>=0; i--){
     if(daysBetween(log[i].fecha, ultimo.fecha) >= 12){ ref = log[i]; break; }
@@ -1347,6 +1371,14 @@ function renderEjercicioChart(exId){
 }
 
 /* ============================= COMIDA ============================= */
+
+function anotarAlimento(nombre, proteina_g, kcal){
+  state.proteina.gramos += proteina_g;
+  state.proteina.kcal += kcal;
+  state.proteina.items.push({nombre, proteina_g, kcal, hora:new Date().toTimeString().slice(0,5)});
+  saveState();
+  RENDERERS.comida();
+}
 
 function ensureProteinaHoy(){
   const hoy = todayStr();
@@ -1388,6 +1420,7 @@ RENDERERS.comida = function(){
               <button class="item-x" data-remove="${i}">✕</button>
             </div>`).join("")}
         </div>` : ""}
+      <button class="btn btn-ghost btn-small" id="btnOtroAlimento" style="width:100%;margin-top:10px;">+ otra comida</button>
     </div>
 
     <details>
@@ -1428,11 +1461,7 @@ RENDERERS.comida = function(){
   el.querySelectorAll("[data-food]").forEach(b=>{
     b.addEventListener("click", ()=>{
       const a = ALIMENTOS[Number(b.dataset.food)];
-      state.proteina.gramos += a.proteina_g;
-      state.proteina.kcal += a.kcal;
-      state.proteina.items.push({nombre:a.nombre, proteina_g:a.proteina_g, hora:new Date().toTimeString().slice(0,5)});
-      saveState();
-      RENDERERS.comida();
+      anotarAlimento(a.nombre, a.proteina_g, a.kcal);
     });
   });
   el.querySelectorAll("[data-remove]").forEach(b=>{
@@ -1440,9 +1469,34 @@ RENDERERS.comida = function(){
       const i = Number(b.dataset.remove);
       const it = state.proteina.items[i];
       state.proteina.gramos = Math.max(0, state.proteina.gramos - it.proteina_g);
+      state.proteina.kcal = Math.max(0, state.proteina.kcal - (it.kcal||0));
       state.proteina.items.splice(i,1);
       saveState();
       RENDERERS.comida();
+    });
+  });
+
+  document.getElementById("btnOtroAlimento").addEventListener("click", ()=>{
+    showModal(`
+      <h2>Otra comida</h2>
+      <p class="muted" style="font-size:.85rem;">Para lo que no está en la lista: la comida en familia, el bocadillo de la calle...</p>
+      <div class="field"><label>Qué era</label><input type="text" id="oNombre" placeholder="Comida en familia"></div>
+      <div class="row">
+        <div class="col field"><label>Proteína (g)</label><input type="number" id="oProte" inputmode="decimal" placeholder="30"></div>
+        <div class="col field"><label>Kcal (opcional)</label><input type="number" id="oKcal" inputmode="numeric" placeholder="600"></div>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn btn-ghost col" id="mCerrar">Cerrar</button>
+        <button class="btn btn-primary col" id="mGuardar">Añadir</button>
+      </div>`, {center:true});
+    document.getElementById("mCerrar").addEventListener("click", closeModal);
+    document.getElementById("mGuardar").addEventListener("click", ()=>{
+      const prote = parseFloat(document.getElementById("oProte").value) || 0;
+      const kcal = parseFloat(document.getElementById("oKcal").value) || 0;
+      const nombre = document.getElementById("oNombre").value.trim() || "Otra comida";
+      if(!prote && !kcal) return;
+      closeModal();
+      anotarAlimento(nombre, prote, kcal);
     });
   });
   const btnCopiar = document.getElementById("btnCopiarCompra");
