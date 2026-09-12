@@ -1737,14 +1737,19 @@ if('serviceWorker' in navigator){
       });
     }).catch(()=>{});
 
-    let recargando = false;
+    /* Solo recargar si la actualización la has pedido tú. El service worker
+       reclama la página la primera vez que se instala, y recargar ahí hacía
+       que la web se reiniciara sola en la primera visita: a mitad de una
+       serie eso es inaceptable. */
     navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-      if(recargando) return;
-      recargando = true;
+      if(!actualizacionPedida) return;
+      actualizacionPedida = false;
       window.location.reload();
     });
   });
 }
+
+let actualizacionPedida = false;
 
 function avisarDeActualizacion(entrante){
   // Nunca en mitad de un entreno: se avisa al terminar.
@@ -1755,6 +1760,7 @@ function avisarDeActualizacion(entrante){
   el.innerHTML = `Hay una versión nueva.
     <button class="btn btn-small btn-primary" style="margin-top:8px;width:100%;">Actualizar</button>`;
   el.querySelector("button").addEventListener("click", ()=>{
+    actualizacionPedida = true;
     entrante.postMessage({tipo:"activar"});
     el.remove();
   });

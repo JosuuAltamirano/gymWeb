@@ -81,6 +81,19 @@ describe("Día a día", () => {
     } finally { await app.cerrar(); }
   });
 
+  test("abrir la web por primera vez no la recarga sola", async () => {
+    // El service worker reclama la página al instalarse. Si se recarga ahí,
+    // la web se reinicia sola en la primera visita, y a mitad de una serie
+    // eso significa perder lo que estabas apuntando.
+    const app = await abrirApp("2026-10-05T06:10:00");
+    try {
+      await app.pagina.evaluate(() => { window.__marca = "viva"; });
+      await app.pagina.waitForTimeout(2500);   // margen para que el sw se active
+      const sigue = await app.pagina.evaluate(() => window.__marca);
+      assert.equal(sigue, "viva", "la página se ha recargado sola");
+    } finally { await app.cerrar(); }
+  });
+
   test("una sesión a medias sobrevive a cerrar y volver a abrir", async () => {
     const app = await abrirApp("2026-10-05T06:10:00");
     try {
