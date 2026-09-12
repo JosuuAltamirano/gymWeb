@@ -13,122 +13,195 @@
 <link rel="apple-touch-icon" href="icon.svg">
 <style>
   :root{
-    --bg:#0e1013;
-    --card:#181b20;
-    --card2:#1f232a;
-    --border:#2a2f37;
-    --text:#eceef1;
-    --muted:#9aa1ac;
-    --accent:#ff5a36;
-    --accent2:#ffcf3f;
-    --good:#3ddc84;
-    --bad:#ff5a5a;
-    --radius:14px;
+    /* Casi negro, hueso y un solo color de señal */
+    --bg:#0A0A0B;
+    --surf:#141417;
+    --surf-2:#1C1C21;
+    --line:#26262C;
+    --ink:#F4F3EF;
+    --dim:#8C8C95;
+    --faint:#5F5F68;
+    --volt:#D7F94F;
+    --volt-ink:#12140A;
+    --amber:#F0B341;
+    --red:#FF6B6B;
+    /* Alias que usan los estilos en línea */
+    --card:var(--surf); --card2:var(--surf-2); --border:var(--line);
+    --text:var(--ink); --muted:var(--dim);
+    --accent:var(--volt); --accent2:var(--amber);
+    --good:var(--volt); --bad:var(--red);
+    --radius:20px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;}
-  body{padding-bottom:90px;}
-  h1,h2,h3{margin:0 0 8px 0;}
-  h1{font-size:1.4rem;}
-  h2{font-size:1.1rem;color:var(--accent2);}
-  h3{font-size:1rem;}
-  p{margin:0 0 8px 0;line-height:1.4;}
-  a{color:var(--accent2);}
-  button{font-family:inherit;}
-  #topbar{position:sticky;top:0;z-index:20;background:var(--bg);padding:14px 16px 8px 16px;
-    border-bottom:1px solid var(--border);}
+  html{-webkit-text-size-adjust:100%;}
+  body{margin:0;padding:0 0 96px;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+
+  h1,h2,h3{margin:0;font-weight:700;}
+  h1{font-size:1.9rem;line-height:1.05;letter-spacing:-.035em;}
+  h2{font-size:.7rem;text-transform:uppercase;letter-spacing:.16em;color:var(--dim);
+    font-weight:600;margin-bottom:14px;}
+  h3{font-size:.95rem;margin:16px 0 4px;letter-spacing:-.01em;}
+  p{margin:0 0 8px;}
+  a{color:var(--ink);}
+  ul{margin:6px 0;padding-left:18px;}
+  li{margin-bottom:6px;}
+  hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
+  .muted{color:var(--dim);}
+  .num{font-variant-numeric:tabular-nums;letter-spacing:-.03em;}
+  .eyebrow{font-size:.64rem;text-transform:uppercase;letter-spacing:.18em;
+    color:var(--dim);font-weight:600;}
+  .frase{opacity:.82;font-size:.95rem;line-height:1.5;}
+  .destacado{color:var(--volt);font-weight:600;}
+
+  #topbar{position:sticky;top:0;z-index:20;padding:16px 20px 12px;
+    background:rgba(10,10,11,.88);border-bottom:1px solid var(--line);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
   #topbar .row{display:flex;justify-content:space-between;align-items:center;}
-  #topbar .sub{color:var(--muted);font-size:.8rem;margin-top:2px;}
-  main{padding:14px 16px 24px 16px;max-width:640px;margin:0 auto;}
+  #topTitle{font-size:.72rem;text-transform:uppercase;letter-spacing:.24em;font-weight:700;}
+  #topbar .sub{color:var(--dim);font-size:.64rem;letter-spacing:.14em;
+    text-transform:uppercase;font-weight:600;margin-top:4px;}
+
+  main{padding:20px;max-width:620px;margin:0 auto;}
   section.screen{display:none;}
   section.screen.active{display:block;}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-    padding:14px;margin-bottom:12px;}
-  .card.tight{padding:10px 14px;}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    min-height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--border);
-    background:var(--card2);color:var(--text);font-size:1rem;font-weight:600;cursor:pointer;
-    width:100%;}
-  .btn:active{filter:brightness(1.15);}
-  .btn-primary{background:var(--accent);border-color:var(--accent);color:#1a0d08;}
-  .btn-good{background:var(--good);border-color:var(--good);color:#062015;}
-  .btn-ghost{background:transparent;}
-  .btn-small{min-height:40px;padding:0 12px;font-size:.85rem;width:auto;}
-  .btn-danger{color:var(--bad);}
-  .row{display:flex;gap:8px;}
+
+  .card{background:var(--surf);border:1px solid transparent;border-radius:20px;
+    padding:20px;margin-bottom:12px;}
+  .card.tight{padding:14px 16px;}
+  .hero{padding:24px 20px;}
+  .hero h1{font-size:2.3rem;margin-top:4px;}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+    min-height:52px;padding:0 20px;border-radius:14px;border:1px solid var(--line);
+    background:var(--surf-2);color:var(--ink);font-size:.95rem;font-weight:600;
+    font-family:inherit;letter-spacing:-.01em;cursor:pointer;width:100%;
+    transition:transform .06s ease,opacity .12s ease;}
+  .btn:active{transform:scale(.985);opacity:.92;}
+  .btn-primary,.btn-good{background:var(--volt);border-color:var(--volt);color:var(--volt-ink);
+    font-weight:700;font-size:.88rem;text-transform:uppercase;letter-spacing:.08em;}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--dim);}
+  .btn-small{min-height:44px;padding:0 14px;font-size:.85rem;width:auto;}
+  .btn-danger{color:var(--red);}
+
+  .row{display:flex;gap:10px;}
   .row.wrap{flex-wrap:wrap;}
   .col{flex:1;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
-  input, select, textarea{
-    width:100%;background:var(--bg);color:var(--text);border:1px solid var(--border);
-    border-radius:10px;padding:10px 12px;font-size:1rem;min-height:44px;}
-  label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:4px;}
-  .field{margin-bottom:10px;}
-  .muted{color:var(--muted);}
-  .badge{display:inline-block;padding:3px 9px;border-radius:20px;background:var(--card2);
-    font-size:.72rem;color:var(--muted);border:1px solid var(--border);}
-  .badge.on{background:var(--accent);color:#1a0d08;border-color:var(--accent);}
-  .progress{height:14px;border-radius:8px;background:var(--card2);overflow:hidden;border:1px solid var(--border);}
-  .progress > div{height:100%;background:var(--accent);transition:width .2s;}
-  .progress.done > div{background:var(--good);}
-  table{width:100%;border-collapse:collapse;font-size:.85rem;}
-  th,td{text-align:left;padding:6px 4px;border-bottom:1px solid var(--border);}
-  th{color:var(--muted);font-weight:600;}
-  details{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-    margin-bottom:10px;padding:10px 14px;}
-  summary{font-weight:700;cursor:pointer;color:var(--accent2);list-style:none;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .field{margin-bottom:12px;}
+
+  input,select,textarea{width:100%;background:var(--surf-2);color:var(--ink);
+    border:1px solid transparent;border-radius:12px;padding:12px 14px;font-size:1rem;
+    min-height:48px;font-family:inherit;font-variant-numeric:tabular-nums;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--volt);}
+  input::placeholder{color:var(--faint);}
+  label{display:block;font-size:.64rem;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--dim);font-weight:600;margin-bottom:6px;}
+
+  .badge{display:inline-block;padding:6px 10px;border-radius:8px;background:var(--surf-2);
+    font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:var(--dim);}
+  .badge.on{background:var(--volt);color:var(--volt-ink);}
+
+  .progress{height:6px;border-radius:99px;background:var(--surf-2);overflow:hidden;}
+  .progress > div{height:100%;background:var(--volt);border-radius:99px;transition:width .25s ease;}
+
+  .kpi{display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  .kpi b{font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.03em;}
+
+  table{width:100%;border-collapse:collapse;font-size:.88rem;}
+  th,td{text-align:left;padding:10px 2px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  th{font-size:.62rem;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);font-weight:600;}
+  td{font-variant-numeric:tabular-nums;}
+
+  details{background:var(--surf);border:1px solid transparent;border-radius:20px;
+    margin-bottom:12px;padding:18px 20px;}
+  summary{font-size:.76rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;
+    cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;}
   summary::-webkit-details-marker{display:none;}
-  summary:before{content:"▸ ";}
-  details[open] summary:before{content:"▾ ";}
-  details .body{margin-top:10px;}
-  ul{margin:4px 0;padding-left:20px;}
-  li{margin-bottom:4px;}
-  #nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);
-    border-top:1px solid var(--border);z-index:30;padding-bottom:env(safe-area-inset-bottom);}
-  #nav button{flex:1;background:none;border:none;color:var(--muted);padding:8px 2px 6px 2px;
-    font-size:.68rem;min-height:56px;display:flex;flex-direction:column;align-items:center;
-    justify-content:center;gap:2px;}
-  #nav button .ic{font-size:1.2rem;}
-  #nav button.active{color:var(--accent2);}
-  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;display:flex;
-    align-items:flex-end;justify-content:center;}
-  .overlay.center{align-items:center;padding:16px;}
-  .sheet{background:var(--card);border:1px solid var(--border);border-radius:16px 16px 0 0;
-    padding:18px;width:100%;max-width:640px;max-height:82vh;overflow:auto;}
-  .overlay.center .sheet{border-radius:16px;max-height:80vh;}
-  .toast{position:fixed;left:16px;right:16px;bottom:80px;background:var(--card2);
-    border:1px solid var(--accent);border-radius:12px;padding:12px 14px;z-index:200;
-    font-size:.9rem;}
-  .exset{display:grid;grid-template-columns:44px 1fr 1fr 48px;gap:6px;align-items:center;margin-bottom:6px;}
-  .exset .lbl{color:var(--muted);font-size:.8rem;}
-  .exset .chk{min-height:44px;border-radius:10px;border:1px solid var(--border);
-    background:var(--card2);color:var(--muted);font-size:1.1rem;}
-  .exset .chk.on{background:var(--good);color:#062015;border-color:var(--good);}
-  .exname{font-size:1.05rem;font-weight:700;}
-  .extarget{color:var(--accent2);font-size:.85rem;margin-bottom:2px;}
-  .exlast{color:var(--muted);font-size:.84rem;margin-bottom:8px;}
-  .exdone{opacity:.55;}
-  #resttimer{position:fixed;left:0;right:0;bottom:70px;background:var(--accent);color:#1a0d08;
-    padding:10px 16px;display:none;z-index:40;font-weight:700;text-align:center;}
+  summary:after{content:"";width:7px;height:7px;flex:none;margin-left:12px;
+    border-right:1.5px solid var(--dim);border-bottom:1.5px solid var(--dim);
+    transform:rotate(45deg) translate(-2px,-2px);}
+  details[open] summary:after{transform:rotate(-135deg);}
+  details .body{margin-top:14px;font-size:.92rem;}
+
+  #nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+    background:rgba(10,10,11,.94);border-top:1px solid var(--line);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    padding-bottom:env(safe-area-inset-bottom);}
+  #nav button{flex:1;background:none;border:none;color:var(--faint);cursor:pointer;
+    padding:10px 2px 8px;min-height:60px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:5px;font-family:inherit;
+    font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;font-weight:600;}
+  #nav button svg{width:21px;height:21px;fill:none;stroke:currentColor;
+    stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;}
+  #nav button.active{color:var(--volt);}
+
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:100;
+    display:flex;align-items:flex-end;justify-content:center;}
+  .overlay.center{align-items:center;padding:20px;}
+  .sheet{background:var(--surf);border-radius:24px 24px 0 0;width:100%;max-width:620px;
+    max-height:82vh;overflow:auto;
+    padding:24px 20px calc(24px + env(safe-area-inset-bottom));}
+  .overlay.center .sheet{border-radius:22px;max-height:80vh;padding-bottom:24px;}
+  .sheet h2{font-size:1.35rem;text-transform:none;letter-spacing:-.025em;
+    color:var(--ink);font-weight:700;margin-bottom:10px;}
+
+  .toast{position:fixed;left:16px;right:16px;bottom:92px;background:var(--surf-2);
+    border:1px solid var(--line);border-radius:14px;padding:14px 16px;z-index:200;
+    font-size:.88rem;box-shadow:0 14px 36px rgba(0,0,0,.55);}
+
+  .exset{display:grid;grid-template-columns:26px 1fr 1fr 54px;gap:8px;
+    align-items:center;margin-bottom:8px;}
+  .exset .lbl{color:var(--faint);font-size:.82rem;font-weight:600;text-align:center;
+    font-variant-numeric:tabular-nums;}
+  .exset input{text-align:center;font-size:1.05rem;font-weight:600;padding:13px 4px;}
+  .exset .chk{min-height:50px;border-radius:12px;border:1px solid var(--line);
+    background:var(--surf-2);color:var(--faint);font-size:1.05rem;cursor:pointer;
+    font-family:inherit;transition:transform .06s ease;}
+  .exset .chk:active{transform:scale(.95);}
+  .exset .chk.on{background:var(--volt);color:var(--volt-ink);border-color:var(--volt);}
+  .exname{font-size:1.15rem;font-weight:700;letter-spacing:-.025em;}
+  .extarget{color:var(--dim);font-size:.72rem;text-transform:uppercase;
+    letter-spacing:.12em;font-weight:600;margin-top:4px;}
+  .exlast{color:var(--dim);font-size:.84rem;margin:8px 0 14px;font-variant-numeric:tabular-nums;}
+  .exdone{background:#101013;}
+  .exdone .exname{color:var(--dim);}
+  .exdone .exset input{color:var(--dim);}
+
+  #resttimer{position:fixed;left:0;right:0;z-index:40;display:none;text-align:center;
+    bottom:calc(60px + env(safe-area-inset-bottom));
+    background:var(--volt);color:var(--volt-ink);padding:13px 20px;
+    font-weight:700;font-size:.95rem;letter-spacing:.04em;font-variant-numeric:tabular-nums;}
   #resttimer.show{display:block;}
-  .switch2{display:flex;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-  .switch2 button{flex:1;background:var(--card2);color:var(--muted);border:none;padding:10px;font-weight:700;min-height:44px;}
-  .switch2 button.active{background:var(--accent);color:#1a0d08;}
-  .rescate{position:fixed;right:14px;bottom:80px;z-index:15;background:var(--card2);
-    border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:8px 12px;font-size:.75rem;}
-  .foodbtn{background:var(--card2);border:1px solid var(--border);border-radius:12px;
-    padding:10px;text-align:center;min-height:56px;}
-  .foodbtn b{display:block;font-size:.85rem;}
-  .foodbtn span{color:var(--muted);font-size:.72rem;}
-  .item-x{color:var(--bad);background:none;border:none;font-size:1rem;padding:4px 8px;}
-  hr{border:none;border-top:1px solid var(--border);margin:10px 0;}
-  .frase{font-style:italic;color:var(--accent2);}
-  .destacado{color:var(--accent2);font-weight:700;}
-  .kpi{display:flex;justify-content:space-between;align-items:baseline;}
-  .kpi b{font-size:1.4rem;}
-  .chart{width:100%;height:140px;}
+
+  .switch2{display:flex;background:var(--surf-2);border-radius:14px;padding:4px;gap:4px;}
+  .switch2 button{flex:1;background:transparent;color:var(--dim);border:none;border-radius:10px;
+    padding:12px 6px;font-weight:600;font-size:.76rem;min-height:44px;cursor:pointer;
+    font-family:inherit;text-transform:uppercase;letter-spacing:.08em;}
+  .switch2 button.active{background:var(--volt);color:var(--volt-ink);font-weight:700;}
+
+  .rescate{position:fixed;right:16px;z-index:15;cursor:pointer;font-family:inherit;
+    bottom:calc(74px + env(safe-area-inset-bottom));
+    background:var(--surf-2);border:1px solid var(--line);color:var(--dim);
+    border-radius:99px;padding:10px 16px;font-size:.76rem;
+    box-shadow:0 10px 28px rgba(0,0,0,.45);}
+
+  .foodbtn{background:var(--surf-2);border:1px solid transparent;border-radius:14px;
+    padding:12px 14px;min-height:68px;color:var(--ink);cursor:pointer;font-family:inherit;
+    display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;
+    text-align:left;}
+  .foodbtn:active{border-color:var(--volt);}
+  .foodbtn b{font-size:.84rem;font-weight:600;line-height:1.25;}
+  .foodbtn span{color:var(--volt);font-size:.74rem;font-weight:700;white-space:nowrap;
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;}
+
+  .item-x{color:var(--faint);background:none;border:none;font-size:.9rem;
+    padding:6px 8px;cursor:pointer;font-family:inherit;}
+
+  .chart{width:100%;height:150px;display:block;}
 </style>
 </head>
 <body>
@@ -155,12 +228,18 @@
 <div id="toastRoot"></div>
 
 <nav id="nav">
-  <button data-screen="hoy" class="navbtn active"><span class="ic">🏠</span>HOY</button>
-  <button data-screen="sesion" class="navbtn"><span class="ic">🏋️</span>SESIÓN</button>
-  <button data-screen="progreso" class="navbtn"><span class="ic">📈</span>PROGRESO</button>
-  <button data-screen="comida" class="navbtn"><span class="ic">🍗</span>COMIDA</button>
-  <button data-screen="guia" class="navbtn"><span class="ic">📘</span>GUÍA</button>
-  <button data-screen="check" class="navbtn"><span class="ic">✅</span>CHECK</button>
+  <button data-screen="hoy" class="navbtn active">
+    <svg viewBox="0 0 24 24"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>HOY</button>
+  <button data-screen="sesion" class="navbtn">
+    <svg viewBox="0 0 24 24"><path d="M4 9.5v5M7.5 7v10M16.5 7v10M20 9.5v5M7.5 12h9"/></svg>SESIÓN</button>
+  <button data-screen="progreso" class="navbtn">
+    <svg viewBox="0 0 24 24"><path d="M4 4v16h16M7.5 15l3.5-4 3 2.5 4.5-5.5"/></svg>PROGRESO</button>
+  <button data-screen="comida" class="navbtn">
+    <svg viewBox="0 0 24 24"><path d="M4 12.5h16a8 8 0 0 1-16 0ZM3.5 20.5h17M9 8.5c0-2 3-2 3-4.5M14 8.5c0-1.5 2-1.5 2-3"/></svg>COMIDA</button>
+  <button data-screen="guia" class="navbtn">
+    <svg viewBox="0 0 24 24"><path d="M4 4.5h6a2.5 2.5 0 0 1 2 2v13a2 2 0 0 0-2-1.5H4zM20 4.5h-6a2.5 2.5 0 0 0-2 2v13a2 2 0 0 1 2-1.5h6z"/></svg>GUÍA</button>
+  <button data-screen="check" class="navbtn">
+    <svg viewBox="0 0 24 24"><path d="M10 6.5h10M10 12h10M10 17.5h10M4 6l1.4 1.4L8 4.8M4 11.5l1.4 1.4L8 10.3M4 17l1.4 1.4L8 15.8"/></svg>CHECK</button>
 </nav>
 
 <script>
@@ -465,10 +544,14 @@ function defaultState(){
     subirPeso:{},
     sesionesHechas:[],
     deload:{ultimaFecha:null},
-    arranque:{}
+    arranque:{},
+    guardadoEn:null,
+    ultimaExportacion:null
   };
 }
 let state = loadState();
+let guardadoRoto = false;
+
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -477,8 +560,69 @@ function loadState(){
     return Object.assign(defaultState(), parsed);
   }catch(e){ return defaultState(); }
 }
+
 function saveState(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  state.guardadoEn = Date.now();
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    guardadoRoto = false;
+  }catch(e){
+    if(!guardadoRoto){
+      guardadoRoto = true;
+      toast("No se han podido guardar los datos en este navegador. Exporta una copia desde PROGRESO.", 6000);
+    }
+  }
+  idbGuardar(state);
+}
+
+/* Copia espejo en IndexedDB. localStorage se puede vaciar solo (Safari lo
+   borra tras días sin abrir la web) y con esto el progreso no se pierde. */
+const IDB_NOMBRE = "migym", IDB_ALMACEN = "estado";
+function conIdb(cb){
+  try{
+    if(!("indexedDB" in window)) return;
+    const req = indexedDB.open(IDB_NOMBRE, 1);
+    req.onupgradeneeded = ()=>{
+      if(!req.result.objectStoreNames.contains(IDB_ALMACEN)) req.result.createObjectStore(IDB_ALMACEN);
+    };
+    req.onsuccess = ()=>{ try{ cb(req.result); }catch(e){} };
+    req.onerror = ()=>{};
+  }catch(e){}
+}
+let idbPendiente = null;
+function idbGuardar(datos){
+  clearTimeout(idbPendiente);
+  const copia = JSON.parse(JSON.stringify(datos));
+  idbPendiente = setTimeout(()=>{
+    conIdb(db=>{
+      const tx = db.transaction(IDB_ALMACEN, "readwrite");
+      tx.objectStore(IDB_ALMACEN).put(copia, "state");
+    });
+  }, 400);
+}
+function idbRecuperar(){
+  conIdb(db=>{
+    const req = db.transaction(IDB_ALMACEN, "readonly").objectStore(IDB_ALMACEN).get("state");
+    req.onsuccess = ()=>{
+      const guardado = req.result;
+      if(!guardado) return;
+      const vacio = !state.pesoLog.length && !Object.keys(state.historial).length && !state.sesionesHechas.length;
+      const tieneDatos = guardado.pesoLog && (guardado.pesoLog.length || Object.keys(guardado.historial||{}).length || (guardado.sesionesHechas||[]).length);
+      if(vacio && tieneDatos){
+        state = Object.assign(defaultState(), guardado);
+        saveState();
+        RENDERERS.hoy();
+        toast("Datos recuperados de la copia del móvil.", 4000);
+      }
+    };
+  });
+}
+
+// Pide al navegador que no borre estos datos para hacer sitio.
+function pedirAlmacenamientoPersistente(){
+  try{
+    if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+  }catch(e){}
 }
 
 /* ============================= HELPERS ============================= */
@@ -594,10 +738,10 @@ RENDERERS.hoy = function(){
   if(!iniciado){
     const dias = daysBetween(hoyISO, PERFIL.fecha_inicio);
     el.innerHTML = `
-      <div class="card" style="text-align:center;">
-        <div class="muted" style="font-size:.85rem;">FALTAN</div>
-        <div style="font-size:2.6rem;font-weight:800;color:var(--accent);line-height:1;">${dias}</div>
-        <div class="muted">día${dias===1?"":"s"} para empezar el plan</div>
+      <div class="card hero" style="text-align:center;">
+        <div class="eyebrow">Faltan</div>
+        <div class="num" style="font-size:4.2rem;font-weight:800;color:var(--volt);line-height:.95;margin:6px 0 2px;">${dias}</div>
+        <div class="muted" style="font-size:.88rem;">día${dias===1?"":"s"} para empezar el plan</div>
       </div>
       <div class="card">
         <h2>Antes de empezar</h2>
@@ -646,20 +790,22 @@ RENDERERS.hoy = function(){
     (!state.deload.ultimaFecha || daysBetween(state.deload.ultimaFecha, hoyISO) >= 56);
 
   el.innerHTML = `
-    <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center;">
+    <div class="card hero">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;">
         <div>
-          <div class="muted" style="font-size:.8rem;">${DIAS_LABEL[diaKey]}${dia.hora? " · "+dia.hora:""}</div>
-          <h1 style="margin-top:2px;">${esDescanso? "DESCANSO" : dia.nombre}</h1>
+          <div class="eyebrow">${DIAS_LABEL[diaKey]}${dia.hora? " · "+dia.hora:""}</div>
+          <h1>${esDescanso? "Descanso" : escapeHtml(dia.nombre)}</h1>
         </div>
         <span class="badge on">Día ${diasDesdeInicio}</span>
       </div>
-      ${dia.aviso? `<p class="muted">⚠️ ${escapeHtml(dia.aviso)}</p>`:""}
-      ${NOTAS_DIA[diaKey] ? `<p class="muted" style="font-size:.82rem;">${escapeHtml(NOTAS_DIA[diaKey])}</p>` : ""}
-      <p class="muted" style="font-size:.78rem;">Gym hoy: ${horarioGymHoy(diaKey)}</p>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:4px;">
+        ${dia.aviso? `<p class="muted" style="font-size:.84rem;margin:0;color:var(--amber);">${escapeHtml(dia.aviso)}</p>`:""}
+        ${NOTAS_DIA[diaKey] ? `<p class="muted" style="font-size:.84rem;margin:0;">${escapeHtml(NOTAS_DIA[diaKey])}</p>` : ""}
+        <p class="muted" style="font-size:.84rem;margin:0;">Gym hoy ${horarioGymHoy(diaKey)}</p>
+      </div>
       ${esDescanso
-        ? `<p class="frase">"${randFrase()}"</p>`
-        : `<button class="btn btn-primary" id="btnEmpezar" style="margin-top:8px;">EMPEZAR SESIÓN</button>`
+        ? `<p class="frase" style="margin-top:16px;">${randFrase()}</p>`
+        : `<button class="btn btn-primary" id="btnEmpezar" style="margin-top:18px;">Empezar sesión</button>`
       }
       <button class="btn btn-ghost btn-small" id="btnOtraSesion" style="margin-top:8px;width:100%;">Entrenar otra sesión</button>
     </div>
@@ -692,7 +838,7 @@ RENDERERS.hoy = function(){
 
     ${cardChecklistNocheHTML()}
 
-    <button class="rescate" id="btnRescate">😩 No tengo ganas</button>
+    <button class="rescate" id="btnRescate">No tengo ganas</button>
   `;
 
   engancharHoy(hoyISO, diaKey, esDescanso);
@@ -717,10 +863,10 @@ function cardProteinaHTML(){
   return `
     <div class="card" id="cardProteina" style="cursor:pointer;">
       <div class="kpi">
-        <span class="muted">Proteína de hoy</span>
-        <b>${g.toFixed(0)} / ${obj} g</b>
+        <span class="eyebrow">Proteína de hoy</span>
+        <b><span style="color:${g>=obj?'var(--volt)':'var(--ink)'};">${g.toFixed(0)}</span><span class="muted" style="font-size:1rem;font-weight:600;"> / ${obj} g</span></b>
       </div>
-      <div class="progress ${g>=obj?'done':''}" style="margin-top:8px;"><div style="width:${pct}%;"></div></div>
+      <div class="progress" style="margin-top:12px;"><div style="width:${pct}%;"></div></div>
     </div>`;
 }
 
@@ -736,9 +882,10 @@ function cardChecklistNocheHTML(){
   if(state.checklist.fecha !== hoyISO) state.checklist = {fecha:hoyISO, marcados:{}};
   const faltan = CHECKLIST_ITEMS.filter(it=>!state.checklist.marcados[it.id]);
   return `
-    <div class="card" style="border-color:${faltan.length? 'var(--accent2)':'var(--border)'};">
-      <h2>Mañana toca ${escapeHtml(dia.nombre)}${dia.hora? " a las "+dia.hora:""}</h2>
-      <p class="muted" style="font-size:.82rem;">Déjalo listo ahora. Por la mañana ya no se decide.</p>
+    <div class="card" style="border-color:${faltan.length? 'var(--amber)':'transparent'};">
+      <div class="eyebrow">Mañana${dia.hora? " · "+dia.hora:""}</div>
+      <h1 style="font-size:1.5rem;margin:4px 0 10px;">${escapeHtml(dia.nombre)}</h1>
+      <p class="muted" style="font-size:.86rem;">Déjalo listo ahora. Por la mañana ya no se decide.</p>
       ${CHECKLIST_ITEMS.map(it=>`
         <button class="btn ${state.checklist.marcados[it.id]?'btn-good':''}" data-item="${it.id}" style="justify-content:flex-start;margin-bottom:6px;">
           ${state.checklist.marcados[it.id]?'✓':'○'}&nbsp;&nbsp;${escapeHtml(it.txt)}
@@ -933,7 +1080,7 @@ function textoTiempoSesion(){
   const s = state.sesionActual;
   if(!s || !s.inicio) return "";
   const min = Math.floor((Date.now()-s.inicio)/60000);
-  return min < 1 ? "acabas de empezar" : min+" min";
+  return min+" min";
 }
 setInterval(()=>{
   const el = document.getElementById("tiempoSesion");
@@ -955,12 +1102,17 @@ RENDERERS.sesion = function(){
   const totalCompletos = s.ejercicios.filter(ex=>ex.sets.every(st=>st.done)).length;
 
   el.innerHTML = `
-    <div class="card tight row" style="justify-content:space-between;align-items:center;">
-      <div>
-        <div class="muted" style="font-size:.78rem;">${DIAS_LABEL[s.diaKey]} · <span id="tiempoSesion">${textoTiempoSesion()}</span></div>
-        <b>${escapeHtml(s.nombre)}</b>
+    <div class="card" style="padding:16px 20px;">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;">
+        <div>
+          <div class="eyebrow">${DIAS_LABEL[s.diaKey]} · <span id="tiempoSesion">${textoTiempoSesion()}</span></div>
+          <h1 style="font-size:1.45rem;margin-top:4px;">${escapeHtml(s.nombre)}</h1>
+        </div>
+        <span class="badge">${totalCompletos}/${s.ejercicios.length}</span>
       </div>
-      <span class="badge">${totalCompletos} de ${s.ejercicios.length} ejercicios</span>
+      <div class="progress" style="margin-top:14px;">
+        <div style="width:${Math.round(totalCompletos/s.ejercicios.length*100)}%;"></div>
+      </div>
     </div>
 
     ${s.fecha !== todayStr()
@@ -1281,11 +1433,11 @@ RENDERERS.progreso = function(){
           <span class="muted" style="font-size:.8rem;">${falta>0? "faltan "+falta+" kg" : "objetivo cumplido"}</span>
         </div>`;
       })()}
-      <div class="row" style="margin-top:8px;">
-        <input type="date" id="pesoFecha" value="${hoy}" style="flex:1;">
-        <input type="number" id="pesoKg" placeholder="kg" step="0.1" style="flex:1;">
-        <button class="btn btn-primary btn-small" id="btnAddPeso">Añadir</button>
+      <div class="grid2" style="margin-top:14px;">
+        <div><label>Fecha</label><input type="date" id="pesoFecha" value="${hoy}"></div>
+        <div><label>Peso (kg)</label><input type="number" id="pesoKg" placeholder="0,0" step="0.1" inputmode="decimal"></div>
       </div>
+      <button class="btn btn-primary" id="btnAddPeso" style="margin-top:10px;">Añadir pesaje</button>
       ${(()=>{
         const a = avisoRitmoPeso();
         return a? `<p style="margin-top:10px;font-size:.85rem;border-left:3px solid ${a.color};padding-left:8px;">${a.txt}</p>` : "";
@@ -1293,8 +1445,9 @@ RENDERERS.progreso = function(){
     </div>
 
     ${mostrarFoto ? `
-    <div class="card" style="border-color:var(--accent);">
-      <p>📸 Toca foto de progreso (frente y perfil, misma luz).</p>
+    <div class="card" style="border-color:var(--amber);">
+      <div class="eyebrow" style="color:var(--amber);">Toca foto</div>
+      <p style="margin-top:6px;">Foto de progreso: frente y perfil, misma luz y mismo sitio.</p>
       <button class="btn btn-small" id="btnFotoHecha">Ya la hice</button>
     </div>` : ""}
 
@@ -1347,12 +1500,21 @@ RENDERERS.progreso = function(){
     </div>
 
     <div class="card">
-      <h2>Copia de seguridad</h2>
-      <p class="muted" style="font-size:.8rem;">Tus datos viven solo en este navegador. Exporta de vez en cuando por si acaso.</p>
+      <h2>Tus datos</h2>
+      <p class="muted" style="font-size:.82rem;">
+        Se guardan solos en este móvil cada vez que tocas algo, con copia de seguridad interna.
+        ${state.guardadoEn? "Último guardado: "+new Date(state.guardadoEn).toLocaleString("es-ES",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})+"." : ""}
+      </p>
+      ${(()=>{
+        const dias = state.ultimaExportacion? daysBetween(state.ultimaExportacion, hoy) : null;
+        if(dias===null) return `<p style="font-size:.82rem;border-left:3px solid var(--accent2);padding-left:8px;">Guarda una copia en el móvil de vez en cuando. Si cambias de teléfono o borras datos del navegador, es lo único que la recupera.</p>`;
+        if(dias>=30) return `<p style="font-size:.82rem;border-left:3px solid var(--accent2);padding-left:8px;">Hace ${dias} días de la última copia. Exporta otra.</p>`;
+        return `<p class="muted" style="font-size:.8rem;">Última copia exportada: ${fmtFecha(state.ultimaExportacion)}.</p>`;
+      })()}
       <div class="row">
-        <button class="btn btn-small col" id="btnExport">Exportar datos</button>
+        <button class="btn btn-small col" id="btnExport">Exportar copia</button>
         <label class="btn btn-small col" style="text-align:center;">
-          Importar datos<input type="file" id="fileImport" accept="application/json" style="display:none;">
+          Importar copia<input type="file" id="fileImport" accept="application/json" style="display:none;">
         </label>
       </div>
     </div>
@@ -1408,6 +1570,9 @@ RENDERERS.progreso = function(){
     a.href = url; a.download = "mi-gym-backup-"+hoy+".json";
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
+    state.ultimaExportacion = hoy;
+    saveState();
+    RENDERERS.progreso();
   });
   document.getElementById("fileImport").addEventListener("change", e=>{
     const file = e.target.files[0];
@@ -1446,12 +1611,21 @@ function svgLineChart(points, opts){
     return [x,y];
   });
   const path = coords.map((c,i)=> (i===0?"M":"L")+c[0].toFixed(1)+","+c[1].toFixed(1)).join(" ");
-  const dots = coords.map(c=>`<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3" fill="#ff5a36"/>`).join("");
+  const area = path+` L${coords[coords.length-1][0].toFixed(1)},${h-pad} L${coords[0][0].toFixed(1)},${h-pad} Z`;
+  const ult = coords[coords.length-1];
+  const id = "g"+Math.random().toString(36).slice(2,7);
   return `<svg class="chart" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <path d="${path}" fill="none" stroke="#ff5a36" stroke-width="2"/>
-    ${dots}
+    <defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D7F94F" stop-opacity=".22"/>
+      <stop offset="100%" stop-color="#D7F94F" stop-opacity="0"/>
+    </linearGradient></defs>
+    <line x1="${pad}" y1="${h-pad}" x2="${w-pad}" y2="${h-pad}" stroke="#26262C" stroke-width="1"/>
+    <path d="${area}" fill="url(#${id})"/>
+    <path d="${path}" fill="none" stroke="#D7F94F" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${ult[0].toFixed(1)}" cy="${ult[1].toFixed(1)}" r="3.5" fill="#D7F94F"/>
   </svg>
-  <div class="row muted" style="justify-content:space-between;font-size:.72rem;">
+  <div class="row" style="justify-content:space-between;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim);font-weight:600;margin-top:2px;">
     <span>${fmtFecha(points[0].fecha)} · ${points[0].v}</span>
     <span>${fmtFecha(points[points.length-1].fecha)} · ${points[points.length-1].v}</span>
   </div>`;
@@ -1518,18 +1692,18 @@ RENDERERS.comida = function(){
     <div class="card">
       <h2>Proteína de hoy</h2>
       <div class="kpi">
-        <b>${state.proteina.gramos.toFixed(1)} g</b>
-        <span class="muted">objetivo ${PERFIL.proteina_objetivo_g} g</span>
+        <b style="font-size:2.4rem;color:${state.proteina.gramos>=PERFIL.proteina_objetivo_g?'var(--volt)':'var(--ink)'};">${Math.round(state.proteina.gramos)}<span class="muted" style="font-size:1.1rem;font-weight:600;"> / ${PERFIL.proteina_objetivo_g} g</span></b>
+        <span class="muted" style="font-size:.8rem;">${Math.round(state.proteina.gramos/PERFIL.proteina_objetivo_g*100)}%</span>
       </div>
-      <div class="progress ${state.proteina.gramos>=PERFIL.proteina_objetivo_g?'done':''}" style="margin:8px 0;">
+      <div class="progress" style="margin:12px 0 10px;">
         <div style="width:${pct}%;"></div>
       </div>
-      <div class="muted" style="font-size:.78rem;">${state.proteina.kcal} kcal registradas hoy · objetivo ${PERFIL.calorias_objetivo} kcal</div>
-      <div class="grid3" style="margin-top:12px;">
+      <div class="muted" style="font-size:.8rem;">${state.proteina.kcal} kcal de ${PERFIL.calorias_objetivo} objetivo</div>
+      <div class="grid2" style="margin-top:16px;">
         ${ALIMENTOS.map((a,i)=>`
           <button class="foodbtn" data-food="${i}">
             <b>${escapeHtml(a.nombre)}</b>
-            <span>+${a.proteina_g}g</span>
+            <span>+${a.proteina_g} g</span>
           </button>`).join("")}
       </div>
       ${state.proteina.items.length? `
@@ -1780,6 +1954,8 @@ RENDERERS.check = function(){
 /* ============================= INIT ============================= */
 
 RENDERERS.hoy();
+idbRecuperar();
+pedirAlmacenamientoPersistente();
 
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{

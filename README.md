@@ -40,6 +40,16 @@ A partir de ahí se abre como una app normal, en pantalla completa, tema oscuro,
 
 Todo el contenido (rutinas, técnica, comida, suplementos, sueño...) viene directamente de tus notas (`rutina-gym.md`, `guia-completa-gym.md`, `spec-web.md`) y está embebido en `index.html`. Si cambias de rutina o de datos, se edita ahí — son objetos JS al principio del `<script>`, fáciles de localizar por nombre (`RUTINA_NORMAL`, `ALIMENTOS`, `TECNICA`, etc.).
 
-## Backup
+## Cómo se guardan los datos
 
-Como los datos viven solo en el navegador de tu móvil, en **PROGRESO** hay un botón para exportar todo a un `.json` (por si cambias de móvil o borras datos del navegador) y otro para importarlo de vuelta.
+Todo se guarda solo, en el móvil, cada vez que tocas algo. No hay cuentas ni servidor. Tres capas para que el progreso no se pierda:
+
+1. **`localStorage`** — el guardado normal, instantáneo en cada cambio.
+2. **Copia en IndexedDB** — se escribe en paralelo. Safari en iPhone puede vaciar `localStorage` si pasas días sin abrir la web; si eso ocurre, al abrirla los datos se restauran solos desde aquí.
+3. **Exportar/importar `.json`** desde PROGRESO — la red de seguridad si cambias de móvil o borras los datos del navegador. La web te recuerda hacerlo si hace más de un mes.
+
+Además pide al navegador almacenamiento persistente (`navigator.storage.persist()`), que evita que el sistema borre los datos para hacer sitio.
+
+## Diseño
+
+Casi negro, hueso y un solo color de señal (volt). Sin librerías ni fuentes externas: tipografía del sistema trabajada con escala, peso y tracking, números tabulares para las cargas, iconos SVG dibujados a mano e interfaz pensada para leerse a las 6:00 con poca luz y una sola mano.
