@@ -24,10 +24,10 @@ tests/                    pruebas de extremo a extremo
 ### Desarrollo
 
 ```bash
-npm install                  # solo eslint y playwright
+npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 54 pruebas sobre un navegador real
+npm test                     # 77 pruebas sobre un navegador real
 npm run lint
 ```
 
