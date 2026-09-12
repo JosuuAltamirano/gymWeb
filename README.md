@@ -27,7 +27,7 @@ tests/                    pruebas de extremo a extremo
 npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 77 pruebas sobre un navegador real
+npm test                     # 84 pruebas sobre un navegador real
 npm run lint
 ```
 
@@ -95,6 +95,10 @@ Todo se guarda solo, en el móvil, cada vez que tocas algo. No hay cuentas ni se
 3. **Exportar/importar `.json`** desde PROGRESO — la red de seguridad si cambias de móvil o borras los datos del navegador. La web te recuerda hacerlo si hace más de un mes.
 
 Además pide al navegador almacenamiento persistente (`navigator.storage.persist()`), que evita que el sistema borre los datos para hacer sitio.
+
+## Objetivos
+
+Los 130 g de proteína, las 2900 kcal y los 74 kg de peso objetivo se editan desde PROGRESO, sin tocar código: a 74 kg no tocan los mismos gramos que a 66. Debajo se ve a cuántos **gramos por kilo** equivale tu objetivo con tu peso actual (para ganar músculo se suele apuntar a 1,6-2,2), así el número se puede juzgar en vez de arrastrarlo. El perfil de `js/datos.js` es solo el punto de partida.
 
 ## Los alimentos
 

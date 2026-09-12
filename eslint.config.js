@@ -21,7 +21,7 @@ const globalesApp = {
   CHECKLIST_ITEMS: "readonly", VERSION: "readonly",
   CATEGORIAS_ALIMENTOS: "readonly",
   Datos: "readonly", Avisos: "readonly", DIAS_ORDEN: "readonly",
-  state: "readonly", saveState: "readonly",
+  state: "readonly", saveState: "readonly", objetivo: "readonly",
   pedirAlmacenamientoPersistente: "readonly", lunesDe: "readonly", nuevoId: "readonly",
   toast: "readonly", RENDERERS: "readonly", iniciarSesion: "readonly",
   switchScreen: "readonly", fmtFecha: "readonly", todayStr: "readonly",
