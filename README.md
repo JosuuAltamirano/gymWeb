@@ -28,7 +28,7 @@ tests/                    pruebas de extremo a extremo
 npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 117 pruebas sobre un navegador real
+npm test                     # 118 pruebas sobre un navegador real
 npm run lint
 ```
 
@@ -76,7 +76,9 @@ Si existen datos del formato antiguo, se migran solos la primera vez: se reconst
 Los iconos son PNG de verdad (`icon-180.png` para iOS, que ignora los SVG), así que en la pantalla de inicio sale el icono y no una captura de la página. Se generan con `node tools/iconos.js` a partir de la misma geometría que `icon.svg`: si cambia el color de la web, se vuelven a generar y listo.
 
 ### Publicarla
-En **Settings → Pages → Build and deployment**, elige **GitHub Actions** como origen. A partir de ahí cada `push` a `main` la publica solo (`.github/workflows/pages.yml`).
+Ya está publicada en **https://josuualtamirano.github.io/gymWeb/**. Cada `push` a `main` copia la web a la rama `gh-pages` (`.github/workflows/pages.yml`) y GitHub la sirve desde ahí; en `gh-pages` solo va lo que el navegador necesita, sin pruebas ni herramientas.
+
+No se usa el camino de `configure-pages`/`deploy-pages` porque crear el sitio de Pages pide permisos de administración que el token de Actions no tiene.
 
 ### Sin publicarla
 Abre `index.html` directamente en el navegador. Funciona igual, pero sin "Añadir a pantalla de inicio" tan pulido y sin caché sin conexión.

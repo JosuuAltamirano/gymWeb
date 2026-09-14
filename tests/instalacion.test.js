@@ -52,6 +52,20 @@ describe("Instalación en el móvil", () => {
     });
   });
 
+  test("lo que se publica incluye todo lo que la web carga", () => {
+    const copia = texto(".github/workflows/pages.yml").match(/cp -R ([^\n]+) sitio\//)[1].split(" ");
+    const publicado = (ruta) => copia.some((patron) => {
+      const primero = ruta.replace("./", "").split("/")[0];
+      if (patron === primero) return true;
+      if (!patron.includes("*")) return false;
+      return new RegExp("^" + patron.replace("*", ".*") + "$").test(primero);
+    });
+    texto("sw.js").match(/"\.\/[^"]+"/g)
+      .map((c) => c.slice(1, -1))
+      .filter((f) => f !== "./")
+      .forEach((f) => assert.ok(publicado(f), "no se publica " + f));
+  });
+
   test("el color del navegador es el mismo que el de la web", () => {
     const css = texto("css/estilos.css");
     const fondo = css.match(/--bg:\s*(#[0-9A-Fa-f]{6})/)[1].toUpperCase();

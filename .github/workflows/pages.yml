@@ -5,12 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Publicar es copiar la web a la rama gh-pages, que es de donde sirve Pages.
+# (El camino "oficial" con configure-pages/deploy-pages no vale aquí: crear el
+#  sitio de Pages pide permisos de administración que el token de Actions no
+#  tiene, así que fallaba en cada push.)
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Si se empujan varios commits seguidos, publica solo el último.
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -18,21 +19,24 @@ concurrency:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
-      # La web es estática: se sube tal cual, sin compilar nada.
-      # enablement activa Pages la primera vez, sin tener que tocar los ajustes.
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
+      # Solo lo que la web necesita: ni pruebas, ni herramientas, ni workflows.
+      - name: Preparar lo que se publica
+        run: |
+          mkdir sitio
+          cp -R index.html manifest.json sw.js icon.svg icon-*.png css js sitio/
+          touch sitio/.nojekyll
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-      - id: despliegue
-        uses: actions/deploy-pages@v4
+      - name: Copiarlo a la rama gh-pages
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd sitio
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publicar $GITHUB_SHA"
+          git push -q --force "https://x-access-token:$TOKEN@github.com/$GITHUB_REPOSITORY.git" gh-pages
