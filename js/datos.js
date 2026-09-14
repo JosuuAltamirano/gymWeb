@@ -1,7 +1,7 @@
 /* Datos fijos: rutina, técnica, comida y guía. Aquí es donde se edita si
    cambia el plan; la lógica no se toca. */
 
-const VERSION = "1.4.0";
+const VERSION = "1.4.1";
 
 /* ============================= DATOS ============================= */
 

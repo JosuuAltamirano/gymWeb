@@ -27,7 +27,7 @@ tests/                    pruebas de extremo a extremo
 npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 84 pruebas sobre un navegador real
+npm test                     # 94 pruebas sobre un navegador real
 npm run lint
 ```
 
@@ -54,6 +54,14 @@ IndexedDB normalizada, con índices y migraciones versionadas. El esquema:
 | `ajustes` | clave | — | modo de semana, sesión en curso, checklist... |
 
 Las series son filas independientes, así que consultar el histórico de un ejercicio, su récord o el volumen de una semana es una consulta, no recorrer un bloque entero. Al arrancar se carga todo en memoria (un año de entrenos son unos miles de filas) y por eso la interfaz responde al instante.
+
+Tres garantías, con una prueba cada una (`tests/integridad.test.js`, que mete un año entero: 208 sesiones y 4160 series):
+
+- **Una sesión entra entera o no entra.** Guardar un entreno es una sola transacción, así que cerrar la web a media escritura no deja una sesión con la mitad de sus series. Borrarla también: se lleva las suyas de una vez, sin dejar huérfanas.
+- **Los ids no se repiten nunca.** Son estrictamente crecientes y al arrancar se siembran con el mayor que ya exista, así que aunque el móvil atrase la hora (cambio de zona, NTP) una fila nueva no puede machacar una guardada.
+- **Si una escritura falla, te enteras.** No se guarda en silencio: la sesión sigue en memoria y en la copia de rescate, y la web te dice que exportes antes de cerrar.
+
+Con un año de datos dentro, las consultas siguen siendo instantáneas (histórico 1 ms, récord y volumen por debajo de 5 ms) y la copia de rescate ocupa unos 600 KB de los ~5 MB que da `localStorage`.
 
 Si existen datos del formato antiguo, se migran solos la primera vez: se reconstruyen sesiones y series a partir del historial por ejercicio. El bloque antiguo no se borra nunca.
 

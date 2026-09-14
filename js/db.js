@@ -111,6 +111,9 @@ const Datos = {
   },
 
   ordenar(){
+    sembrarContadorId(this.series);
+    sembrarContadorId(this.sesiones);
+    sembrarContadorId(this.comidas);
     this.pesajes.sort((a,b)=> a.fecha.localeCompare(b.fecha));
     this.medidas.sort((a,b)=> a.fecha.localeCompare(b.fecha));
     this.sesiones.sort((a,b)=> a.fecha.localeCompare(b.fecha) || (a.id-b.id));
@@ -235,19 +238,41 @@ const Datos = {
     this.escribir("medidas", medida);
   },
 
-  // Guarda la sesión y todas sus series como filas independientes.
+  /* Guarda la sesión y todas sus series en UNA transacción: o entra el
+     entreno entero o no entra nada. Antes iba fila a fila, y cerrar la web
+     a media escritura dejaba sesiones con la mitad de las series. */
   registrarSesion(sesion, seriesPorEjercicio){
     sesion.id = nuevoId();
-    this.sesiones.push(sesion);
-    this.escribir("sesiones", sesion);
+    const filas = [];
     seriesPorEjercicio.forEach(({ejercicioId, series})=>{
-      series.forEach((st,i)=>{
-        const fila = {id:nuevoId(), sesionId:sesion.id, ejercicioId, orden:i,
-          peso:Number(st.peso), repes:Number(st.repes), fecha:sesion.fecha};
-        this.series.push(fila);
-        this.escribir("series", fila);
-      });
+      series.forEach((st,i)=> filas.push({
+        id: nuevoId(), sesionId: sesion.id, ejercicioId, orden: i,
+        peso: Number(st.peso), repes: Number(st.repes), fecha: sesion.fecha
+      }));
     });
+
+    this.sesiones.push(sesion);
+    filas.forEach(f=> this.series.push(f));
+    this.guardarRescate();
+
+    if(!this.disponible) return;
+    try{
+      const tx = this.bd.transaction(["sesiones","series"], "readwrite");
+      tx.objectStore("sesiones").put(sesion);
+      const almacen = tx.objectStore("series");
+      filas.forEach(f=> almacen.put(f));
+      tx.onabort = tx.onerror = ()=> this.avisarEscrituraFallida();
+    }catch(e){ this.avisarEscrituraFallida(); }
+  },
+
+  /* Si la escritura falla, la sesión sigue en memoria y en la copia de
+     rescate, así que no se pierde: lo que no puede pasar es que el usuario
+     no se entere. */
+  avisarEscrituraFallida(){
+    this.escribirRescate();
+    if(typeof toast === "function"){
+      toast("No se ha podido guardar en la base del móvil. Exporta una copia desde PROGRESO antes de cerrar.", 8000);
+    }
   },
 
   /* ---------- Correcciones ----------
@@ -273,12 +298,22 @@ const Datos = {
     this.escribir("sesiones", fila);
   },
 
-  // Borrar una sesión se lleva sus series: si no, quedan filas huérfanas.
+  /* Borrar una sesión se lleva sus series, en una sola transacción: a medias
+     quedarían filas huérfanas contando en el volumen y en los récords. */
   borrarSesion(id){
-    this.series.filter(s=> s.sesionId === id).forEach(s=> this.borrar("series", s.id));
+    const suyas = this.series.filter(s=> s.sesionId === id).map(s=> s.id);
     this.series = this.series.filter(s=> s.sesionId !== id);
     this.sesiones = this.sesiones.filter(s=> s.id !== id);
-    this.borrar("sesiones", id);
+    this.guardarRescate();
+
+    if(!this.disponible) return;
+    try{
+      const tx = this.bd.transaction(["sesiones","series"], "readwrite");
+      const almacen = tx.objectStore("series");
+      suyas.forEach(idSerie=> almacen.delete(idSerie));
+      tx.objectStore("sesiones").delete(id);
+      tx.onabort = tx.onerror = ()=> this.avisarEscrituraFallida();
+    }catch(e){ this.avisarEscrituraFallida(); }
   },
 
   borrarPesaje(fecha){
@@ -402,11 +437,17 @@ const Datos = {
   /* ---------- Copia de rescate y exportación ---------- */
 
   instantanea(){
+    /* Los ajustes salen con las claves ordenadas. Un objeto conserva el orden
+       en que se escribieron sus claves, y ese orden cambia al recargar de la
+       base: sin esto, exportar e importar los mismos datos da dos archivos
+       distintos y no hay forma de compararlos. */
+    const ajustes = {};
+    Object.keys(this.ajustes).sort().forEach(c=> ajustes[c] = this.ajustes[c]);
     return {
       version: DB_VERSION,
       exportado: new Date().toISOString(),
       sesiones: this.sesiones, series: this.series, pesajes: this.pesajes,
-      medidas: this.medidas, comidas: this.comidas, ajustes: this.ajustes
+      medidas: this.medidas, comidas: this.comidas, ajustes
     };
   },
 
@@ -480,11 +521,20 @@ const Datos = {
 
 /* Los ids los genera la app, no el autoincremento de IndexedDB: así la fila
    entra en memoria en el mismo instante y la pantalla no va un toque por
-   detrás esperando a que vuelva la escritura. */
-let _contadorId = 0;
+   detrás esperando a que vuelva la escritura.
+
+   Son estrictamente crecientes y no dependen solo del reloj. Si el móvil
+   ajusta la hora hacia atrás (cambio de zona, NTP), un id basado únicamente
+   en Date.now() se repetiría y machacaría filas ya guardadas. Al arrancar se
+   siembra con el mayor id que ya exista, así nunca se pisa nada. */
+let _ultimoId = 0;
 function nuevoId(){
-  _contadorId = (_contadorId + 1) % 1000;
-  return Date.now()*1000 + _contadorId;
+  const porReloj = Date.now()*1000;
+  _ultimoId = porReloj > _ultimoId ? porReloj : _ultimoId + 1;
+  return _ultimoId;
+}
+function sembrarContadorId(filas){
+  filas.forEach(f=>{ if(typeof f.id === "number" && f.id > _ultimoId) _ultimoId = f.id; });
 }
 
 // Lunes de la semana a la que pertenece una fecha ISO.
