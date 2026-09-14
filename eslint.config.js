@@ -48,13 +48,14 @@ module.exports = [
     }
   },
   {
-    files: ["tests/**/*.js", "*.config.js"],
+    files: ["tests/**/*.js", "tools/**/*.js", "*.config.js"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "commonjs",
       globals: {
         require: "readonly", module: "writable", process: "readonly",
         __dirname: "readonly", console: "readonly", localStorage: "readonly",
+        Buffer: "readonly", Int32Array: "readonly",
         ...globalesApp
       }
     },

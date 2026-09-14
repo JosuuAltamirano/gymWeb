@@ -421,6 +421,24 @@ const Datos = {
     return this.comidas.filter(c=>c.fecha===fecha).sort((a,b)=> (a.id||0)-(b.id||0));
   },
 
+  /* Proteína y kcal de los últimos días, con los días vacíos dentro: un día
+     a cero también cuenta, y si se salta la media engaña. */
+  proteinaPorDia(dias, hasta){
+    const cubos = new Map();
+    const fin = new Date((hasta || new Date().toISOString().slice(0,10)) + "T12:00:00");
+    for(let i = (dias||7)-1; i >= 0; i--){
+      const d = new Date(fin);
+      d.setDate(d.getDate() - i);
+      cubos.set(d.toISOString().slice(0,10), {g:0, kcal:0});
+    }
+    this.comidas.forEach(c=>{
+      const dia = cubos.get(c.fecha);
+      if(dia){ dia.g += c.proteina||0; dia.kcal += c.kcal||0; }
+    });
+    return [...cubos.entries()].map(([fecha,v])=>
+      ({fecha, g: Math.round(v.g), kcal: Math.round(v.kcal)}));
+  },
+
   // Volumen = peso x repes, sumado por semana. Sirve para ver la carga real.
   volumenPorSemana(semanas){
     const cubos = new Map();

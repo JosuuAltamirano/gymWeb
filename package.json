@@ -7,7 +7,7 @@
   "scripts": {
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "test:watch": "node --test --watch --test-concurrency=1 \"tests/**/*.test.js\"",
-    "lint": "eslint js tests",
+    "lint": "eslint js tests tools",
     "serve": "node tests/servidor.js --puerto 8080"
   },
   "devDependencies": {

@@ -81,6 +81,7 @@ function randFrase(){
 
 const RENDERERS = {};
 function switchScreen(name){
+  if(name === "comida") diaComida = null;
   document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
   document.getElementById("screen-"+name).classList.add("active");
   document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("active", b.dataset.screen===name));
@@ -184,6 +185,8 @@ RENDERERS.hoy = function(){
       <button class="btn btn-ghost btn-small" id="btnOtraSesion" style="margin-top:8px;width:100%;">Entrenar otra sesión</button>
     </div>
 
+    ${cardSemanaHTML(hoyISO)}
+
     ${enDescarga ? `
     <div class="card" style="border-color:var(--accent2);">
       <h2>Semana de descarga</h2>
@@ -225,6 +228,57 @@ RENDERERS.hoy = function(){
 
   engancharHoy(hoyISO, diaKey, esDescanso);
 };
+
+/* Cómo va la semana. No hace falta inventar nada: la rutina sabe qué días
+   toca entrenar y cada sesión guarda de qué día era, así que se puede decir
+   qué queda y qué se quedó por el camino. La semana empieza el lunes. */
+function cardSemanaHTML(hoyISO){
+  const lunes = lunesDe(hoyISO);
+  const rutina = getRutina(state.modo);
+  const previstos = DIAS_ORDEN.filter(dk=>{
+    const d = rutina.dias[dk];
+    return d && d.ejercicios && d.ejercicios.length;
+  });
+  if(!previstos.length) return "";
+
+  const hechas = Datos.sesiones.filter(s=> s.fecha >= lunes && s.fecha <= hoyISO);
+  const diasHechos = new Set(hechas.map(s=> s.diaKey));
+  const hoyKey = getDiaKey(new Date());
+  const indiceHoy = DIAS_ORDEN.indexOf(hoyKey);
+
+  const pendientes = previstos.filter(dk=> !diasHechos.has(dk) && DIAS_ORDEN.indexOf(dk) >= indiceHoy);
+  const perdidos = previstos.filter(dk=> !diasHechos.has(dk) && DIAS_ORDEN.indexOf(dk) < indiceHoy);
+  const nombreDe = dk=> rutina.dias[dk].nombre;
+
+  const puntos = DIAS_ORDEN.map(dk=>{
+    const toca = previstos.includes(dk);
+    const hecho = diasHechos.has(dk);
+    const esHoy = dk === hoyKey;
+    const clase = "dia" + (hecho? " hecho" : toca? " toca" : "") + (esHoy? " hoy" : "");
+    return `<div class="${clase}" title="${escapeHtml(toca? nombreDe(dk) : "Descanso")}">
+      <span>${dk === "miercoles" ? "X" : DIAS_LABEL[dk][0]}</span></div>`;
+  }).join("");
+
+  const conDia = dk=> nombreDe(dk) + " (" + DIAS_LABEL[dk].toLowerCase() + ")";
+  let pie;
+  if(hechas.length >= previstos.length) pie = "Semana completa. Lo que queda es descansar y comer.";
+  else if(pendientes.length) pie = "Queda " + pendientes.map(conDia).join(", ") + ".";
+  else pie = "Ya no quedan días de plan esta semana.";
+  if(perdidos.length){
+    pie += " Se quedó sin hacer " + perdidos.map(conDia).join(" y ") +
+      ": con \u201centrenar otra sesión\u201d lo recuperas cualquier día.";
+  }
+
+  return `
+    <div class="card">
+      <div class="kpi">
+        <span class="muted">Esta semana</span>
+        <b>${hechas.length} <span class="muted" style="font-size:.9rem;font-weight:600;">de ${previstos.length}</span></b>
+      </div>
+      <div class="semana">${puntos}</div>
+      <p class="muted" style="font-size:.8rem;margin:12px 0 0;">${escapeHtml(pie)}</p>
+    </div>`;
+}
 
 // Trozos de HOY que se reutilizan en la cuenta atrás y en el día a día.
 function cardPesoHTML(hoyISO, mostrar, texto){
@@ -1459,6 +1513,9 @@ function renderEjercicioChart(exId){
 /* ============================= COMIDA ============================= */
 
 let filtroAlimento = "";
+/* Normalmente se anota lo de hoy, pero la cena de ayer se apunta al día
+   siguiente más veces de las que uno quiere admitir. null = hoy. */
+let diaComida = null;
 
 // Sin tildes ni mayúsculas: a las 6:00 nadie escribe "plátano" con tilde.
 function normalizar(t){
@@ -1572,7 +1629,7 @@ function editarAlimento(id){
 
 function anotarAlimento(nombre, proteina_g, kcal){
   Datos.añadirComida({
-    fecha: todayStr(), nombre,
+    fecha: diaComida || todayStr(), nombre,
     proteina: proteina_g, kcal,
     hora: new Date().toTimeString().slice(0,5)
   });
@@ -1582,8 +1639,8 @@ function anotarAlimento(nombre, proteina_g, kcal){
 }
 
 // Las comidas son filas con fecha, así que el día se reinicia solo.
-function proteinaHoy(){
-  const filas = Datos.comidasDe(todayStr());
+function proteinaDe(fecha){
+  const filas = Datos.comidasDe(fecha);
   return {
     filas,
     gramos: filas.reduce((t,c)=> t + (c.proteina||0), 0),
@@ -1591,14 +1648,70 @@ function proteinaHoy(){
   };
 }
 
+function proteinaHoy(){ return proteinaDe(todayStr()); }
+
+function ayerStr(){
+  const d = new Date(todayStr() + "T12:00:00");
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().slice(0,10);
+}
+
+/* Los últimos siete días de proteína. La media importa más que el día suelto:
+   un día flojo no rompe nada, siete seguidos sí. */
+function cardSemanaProteinaHTML(){
+  const meta = objetivo("proteina_objetivo_g");
+  const dias = Datos.proteinaPorDia(7);
+  if(!dias.some(d=> d.g > 0)) return "";
+
+  const media = Math.round(dias.reduce((t,d)=> t + d.g, 0) / dias.length);
+  const cumplidos = dias.filter(d=> d.g >= meta).length;
+  const tope = Math.max(meta, ...dias.map(d=> d.g));
+  const hoyISO = todayStr();
+
+  const letraDe = fecha=>{
+    const dk = getDiaKey(new Date(fecha + "T12:00:00"));
+    return dk === "miercoles" ? "X" : DIAS_LABEL[dk][0];
+  };
+  const tubos = dias.map(d=>{
+    const alto = Math.max(3, Math.round((d.g/tope)*100));
+    return `<div class="tubo" title="${escapeHtml(fmtFecha(d.fecha))}: ${d.g} g">
+        <div class="relleno${d.g>=meta?" ok":""}" style="height:${alto}%;"></div>
+      </div>`;
+  }).join("");
+  const letras = dias.map(d=>
+    `<span class="${d.fecha===hoyISO?"hoy":""}">${letraDe(d.fecha)}</span>`).join("");
+
+  return `
+    <div class="card">
+      <h2>Últimos 7 días</h2>
+      <div class="kpi">
+        <b>${media} <span class="muted" style="font-size:.9rem;font-weight:600;">g de media</span></b>
+        <span class="muted" style="font-size:.8rem;">${cumplidos} de 7 días al objetivo</span>
+      </div>
+      <div class="barras-proteina">
+        <div class="tubos"><div class="meta" style="bottom:${Math.round((meta/tope)*100)}%;"></div>${tubos}</div>
+        <div class="letras">${letras}</div>
+      </div>
+      <p class="muted" style="font-size:.78rem;margin:12px 0 0;">
+        La línea es tu objetivo (${meta} g). Lo que cuenta es la media de la semana, no clavarlo cada día.
+      </p>
+    </div>`;
+}
+
 RENDERERS.comida = function(){
   const el = document.getElementById("screen-comida");
-  const dia = proteinaHoy();
+  const fecha = diaComida || todayStr();
+  const esHoy = fecha === todayStr();
+  const dia = proteinaDe(fecha);
   const pct = Math.min(100, Math.round((dia.gramos/objetivo("proteina_objetivo_g"))*100));
 
   el.innerHTML = `
     <div class="card">
-      <h2>Proteína de hoy</h2>
+      <h2>Proteína de ${esHoy? "hoy" : "ayer"}</h2>
+      <div class="switch2" style="margin-bottom:14px;">
+        <button data-dia-comida="hoy" class="${esHoy?"active":""}">HOY</button>
+        <button data-dia-comida="ayer" class="${esHoy?"":"active"}">AYER</button>
+      </div>
       <div class="kpi">
         <b style="font-size:2.4rem;color:${dia.gramos>=objetivo("proteina_objetivo_g")?'var(--volt)':'var(--ink)'};">${Math.round(dia.gramos)}<span class="muted" style="font-size:1.1rem;font-weight:600;"> / ${objetivo("proteina_objetivo_g")} g</span></b>
         <span class="muted" style="font-size:.8rem;">${Math.round(dia.gramos/objetivo("proteina_objetivo_g")*100)}%</span>
@@ -1607,6 +1720,8 @@ RENDERERS.comida = function(){
         <div style="width:${pct}%;"></div>
       </div>
       <div class="muted" style="font-size:.8rem;">${dia.kcal} kcal de ${objetivo("calorias_objetivo")} objetivo</div>
+      ${!dia.filas.length && !esHoy ? `
+        <p class="muted" style="font-size:.82rem;margin:12px 0 0;">Ayer no quedó nada apuntado. Lo que recuerdes, añádelo abajo.</p>` : ""}
       ${dia.filas.length? `
         <hr>
         <div style="font-size:.85rem;display:flex;flex-direction:column;gap:6px;">
@@ -1618,8 +1733,10 @@ RENDERERS.comida = function(){
         </div>` : ""}
     </div>
 
+    ${cardSemanaProteinaHTML()}
+
     <div class="card">
-      <h2>Añadir comida</h2>
+      <h2>Añadir ${esHoy? "comida" : "a ayer"}</h2>
       <input type="search" id="buscarAlimento" placeholder="Buscar: pollo, yogur, avena..."
         value="${escapeHtml(filtroAlimento)}" aria-label="Buscar alimento">
       <div id="listaAlimentos" style="margin-top:14px;"></div>
@@ -1674,6 +1791,13 @@ RENDERERS.comida = function(){
   buscador.addEventListener("input", ()=>{
     filtroAlimento = buscador.value;
     pintarListaAlimentos();   // solo la lista, para no perder el foco al escribir
+  });
+
+  el.querySelectorAll("[data-dia-comida]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      diaComida = b.dataset.diaComida === "ayer" ? ayerStr() : null;
+      RENDERERS.comida();
+    });
   });
 
   document.getElementById("btnNuevoAlimento").addEventListener("click", ()=> editarAlimento(null));
@@ -1884,7 +2008,16 @@ function avisarDeFallo(mensaje){
 // primera pantalla ya sale con los datos buenos, sin parpadeos.
 Datos.abrir(()=>{
   pedirAlmacenamientoPersistente();
-  RENDERERS.hoy();
+  /* Si el móvil cerró la pestaña a mitad del entreno (en el iPhone pasa en
+     cuanto abres otra cosa), al volver se vuelve a la sesión, no al inicio:
+     estás entre series, no eligiendo qué hacer. */
+  const enCurso = state.sesionActual;
+  if(enCurso && enCurso.fecha === todayStr()){
+    switchScreen("sesion");
+    pedirWakeLock();
+  } else {
+    RENDERERS.hoy();
+  }
   // Señal de "ya está todo cargado": la usan los tests para no esperar a ciegas.
   document.documentElement.dataset.listo = "1";
 });
