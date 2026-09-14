@@ -44,7 +44,10 @@ hr{border:none;border-top:1px solid var(--line);margin:16px 0;}
 .frase{opacity:.82;font-size:.95rem;line-height:1.5;}
 .destacado{color:var(--volt);font-weight:600;}
 
-#topbar{position:sticky;top:0;z-index:20;padding:16px 20px 12px;
+/* En el iPhone instalado, la web llega hasta arriba del todo (la barra de
+   estado es translúcida): sin este hueco, el título queda bajo el reloj. */
+#topbar{position:sticky;top:0;z-index:20;
+  padding:calc(16px + env(safe-area-inset-top)) 20px 12px;
   background:rgba(10,10,11,.88);border-bottom:1px solid var(--line);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
 #topbar .row{display:flex;justify-content:space-between;align-items:center;}
@@ -242,3 +245,35 @@ textarea{min-height:72px;resize:vertical;line-height:1.45;font-size:.95rem;}
   padding:10px 4px;cursor:pointer;font-family:inherit;}
 .alimento-editar:active{color:var(--ink);}
 #buscarAlimento{font-size:1rem;}
+
+/* Los siete días de la semana, de un vistazo: lo hecho, lo que toca y hoy. */
+.semana{display:flex;gap:6px;margin-top:14px;}
+.semana .dia{flex:1;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:12px;background:none;color:var(--faint);
+  font-size:.66rem;font-weight:700;letter-spacing:.06em;
+  border:1px dashed var(--line);}
+.semana .dia.toca{background:var(--surf-2);color:var(--dim);border-style:solid;}
+.semana .dia.hecho{background:var(--volt);color:var(--volt-ink);border-color:var(--volt);}
+.semana .dia.hoy{border-color:var(--ink);}
+
+/* Proteína de los últimos días. La línea punteada es el objetivo: se ve de
+   un vistazo qué días llegaste sin tener que leer ningún número. */
+.barras-proteina{margin-top:16px;}
+.barras-proteina .tubos{display:flex;gap:6px;height:78px;position:relative;}
+.barras-proteina .meta{position:absolute;left:0;right:0;border-top:1px dashed #3C3C46;}
+.barras-proteina .tubo{flex:1;background:var(--surf-2);border-radius:8px;
+  display:flex;align-items:flex-end;overflow:hidden;}
+.barras-proteina .relleno{width:100%;background:#3A3A42;border-radius:8px;}
+.barras-proteina .relleno.ok{background:var(--volt);}
+.barras-proteina .letras{display:flex;gap:6px;margin-top:8px;}
+.barras-proteina .letras span{flex:1;text-align:center;font-size:.62rem;font-weight:700;
+  letter-spacing:.06em;color:var(--faint);}
+.barras-proteina .letras span.hoy{color:var(--ink);}
+
+/* Teclado y accesibilidad: el foco tiene que verse (se navega con el teclado
+   del móvil al escribir pesos), y a quien le marean las animaciones, ninguna. */
+:focus-visible{outline:2px solid var(--volt);outline-offset:2px;border-radius:8px;}
+@media (prefers-reduced-motion: reduce){
+  *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important;}
+}

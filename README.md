@@ -16,7 +16,8 @@ js/db.js                  base de datos local y capa de acceso
 js/avisos.js              calendario (.ics) y aviso de descanso
 js/app.js                 pantallas y lógica
 sw.js                     funcionamiento sin internet y actualizaciones
-manifest.json, icon.svg   instalación en el móvil
+manifest.json, icon*.png  instalación en el móvil
+tools/iconos.js           genera los iconos PNG
 tests/                    pruebas de extremo a extremo
 .github/workflows/        CI y publicación automática
 ```
@@ -27,7 +28,7 @@ tests/                    pruebas de extremo a extremo
 npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 94 pruebas sobre un navegador real
+npm test                     # 117 pruebas sobre un navegador real
 npm run lint
 ```
 
@@ -67,26 +68,27 @@ Si existen datos del formato antiguo, se migran solos la primera vez: se reconst
 
 ## Cómo usarla
 
-### Opción 1 — abrir el archivo directamente
-Abre `index.html` en el navegador del móvil (por ejemplo, mándatelo por WhatsApp/Drive y ábrelo). Funciona igual, pero sin el "Añadir a pantalla de inicio" tan pulido y sin el service worker de caché.
+### En el iPhone (lo normal)
+1. Abre la URL de GitHub Pages en **Safari** (en Chrome no sale la opción).
+2. Botón de compartir → **Añadir a pantalla de inicio**.
+3. Se abre como una app: pantalla completa, sin barra del navegador y sin necesidad de cobertura.
 
-### Opción 2 — GitHub Pages (recomendado)
-1. En el repo, ve a **Settings → Pages**.
-2. En "Build and deployment" elige **Deploy from a branch**.
-3. Selecciona la rama con estos archivos (o mergéala a `main`) y la carpeta `/ (root)`.
-4. Guarda. En un par de minutos tendrás una URL tipo `https://<usuario>.github.io/gymWeb/`.
-5. Abre esa URL en el móvil → menú del navegador → **"Añadir a pantalla de inicio"**.
+Los iconos son PNG de verdad (`icon-180.png` para iOS, que ignora los SVG), así que en la pantalla de inicio sale el icono y no una captura de la página. Se generan con `node tools/iconos.js` a partir de la misma geometría que `icon.svg`: si cambia el color de la web, se vuelven a generar y listo.
 
-A partir de ahí se abre como una app normal, en pantalla completa, tema oscuro, y sigue funcionando sin cobertura.
+### Publicarla
+En **Settings → Pages → Build and deployment**, elige **GitHub Actions** como origen. A partir de ahí cada `push` a `main` la publica solo (`.github/workflows/pages.yml`).
+
+### Sin publicarla
+Abre `index.html` directamente en el navegador. Funciona igual, pero sin "Añadir a pantalla de inicio" tan pulido y sin caché sin conexión.
 
 ## Pantallas
 
-1. **HOY** — qué toca hoy, horario del gym del día, botón para empezar sesión, opción de entrenar otra sesión (para cuando el domingo no cuadra o recuperas un día), selector NORMAL/OBRA, peso actual con pesaje semanal en línea, proteína del día de un vistazo, aviso de semana de descarga y, por la noche, el checklist de mañana si al día siguiente toca gym.
+1. **HOY** — qué toca hoy, **cómo va la semana** (los siete días de un vistazo: lo hecho, lo que queda y lo que se dejó atrás, con el nombre de la sesión que falta), horario del gym del día, botón para empezar sesión, opción de entrenar otra sesión (para cuando el domingo no cuadra o recuperas un día), selector NORMAL/OBRA, peso actual con pesaje semanal en línea, proteína del día de un vistazo, aviso de semana de descarga y, por la noche, el checklist de mañana si al día siguiente toca gym.
 
    Antes del 22 de septiembre muestra la cuenta atrás y el calendario de arranque, pero **funcionando**: puedes marcar cada hito, registrar el peso inicial, marcar la foto del día 1 y hacer las sesiones suaves del 15 y el 16.
-2. **SESIÓN** — calentamiento con los pesos de aproximación ya calculados, cada serie pre-sugerida según la doble progresión (un toque al check y queda registrada), últimas cargas a la vista, tiempo que llevas dentro, temporizador de descanso automático (aguanta si recargas la página), técnica de cada ejercicio, marca de puntos débiles, añadir/quitar series, **cambiar o saltar un ejercicio** (gym lleno, algo que duele), **nota de la sesión**, modo rápido (avisando de qué se queda fuera) y descartar sesión. La pantalla no se apaga mientras entrenas.
+2. **SESIÓN** — calentamiento con los pesos de aproximación ya calculados, cada serie pre-sugerida según la doble progresión (un toque al check y queda registrada), últimas cargas a la vista, tiempo que llevas dentro, temporizador de descanso automático (aguanta si recargas la página), técnica de cada ejercicio, marca de puntos débiles, añadir/quitar series, **cambiar o saltar un ejercicio** (gym lleno, algo que duele), **nota de la sesión**, modo rápido (avisando de qué se queda fuera) y descartar sesión. La pantalla no se apaga mientras entrenas, y si el móvil cierra la pestaña (en el iPhone pasa en cuanto abres otra app) al volver entras directamente en la sesión, no en el inicio.
 3. **PROGRESO** — resumen (sesiones, media semanal, carga movida, ritmo real de peso), gráfica de peso corporal con objetivo y aviso automático de "come más" si en 2 semanas no subes, volumen por semana, récords personales, carga por ejercicio, historial de sesiones **abrible y corregible**, medidas con gráfica de evolución, foto mensual, recordatorios al calendario y copia de seguridad.
-4. **COMIDA** — contador de proteína del día, catálogo de productos reales del Mercadona con raciones concretas (buscable y con lo que más repites arriba), corrección de cualquier valor con el de tu etiqueta, alimentos propios, menús guardados y lista de la compra con botón de copiar para WhatsApp.
+4. **COMIDA** — contador de proteína del día (y de **ayer**, porque la cena se apunta al día siguiente más veces de las que uno admite), **los últimos 7 días** con la media y los días que llegaste al objetivo, catálogo de productos reales del Mercadona con raciones concretas (buscable y con lo que más repites arriba), corrección de cualquier valor con el de tu etiqueta, alimentos propios, menús guardados y lista de la compra con botón de copiar para WhatsApp.
 5. **GUÍA** — técnica, progresión, suplementos, sueño, alcohol, qué hacer cuando algo falla, qué esperar mes a mes, lo que no hago.
 6. **CHECK** — checklist de la noche anterior a un día de gym.
 
