@@ -60,7 +60,7 @@ describe("Objetivos", () => {
     await app.pagina.waitForTimeout(300);
     const texto = await app.pagina.textContent("#screen-progreso");
     assert.match(texto, /objetivo 78 kg/);
-    assert.match(texto, /faltan 10.0 kg/, "78 - 68 = 10");
+    assert.match(texto, /faltan 10,0 kg/, "78 - 68 = 10, con coma como se escribe aquí");
   });
 
   test("no deja errores en consola", () => {

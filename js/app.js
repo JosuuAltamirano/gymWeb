@@ -62,6 +62,54 @@ function horarioGymHoy(diaKey){
   if(diaKey==="domingo") return HORARIOS_GYM["Domingo y festivos"];
   return HORARIOS_GYM["L-V"];
 }
+/* Decimales. En el teclado del móvil en español la tecla del punto es una
+   coma, y un input type="number" la tira sin avisar: escribir 62,5 guardaba
+   625 — el peso corporal o la mancuerna multiplicados por diez, envenenando
+   récord, volumen y gráficas para siempre. Así que los campos con decimales
+   son de texto con teclado numérico y los números se leen aceptando las dos,
+   coma y punto. */
+function aNumero(txt){
+  if(typeof txt === "number") return isNaN(txt) ? NaN : txt;
+  const limpio = String(txt==null? "" : txt).trim().replace(/\s/g, "").replace(",", ".");
+  if(!/^\d+(\.\d+)?$/.test(limpio)) return NaN;
+  return Number(limpio);
+}
+
+/* Los enteros (repeticiones, kcal) se leen quitando separadores: aquí 2.900
+   son dos mil novecientas calorías, no dos coma nueve. */
+function aEntero(txt){
+  const limpio = String(txt==null? "" : txt).replace(/[^\d]/g, "");
+  return limpio === "" ? NaN : Number(limpio);
+}
+
+// Para enseñar un número en un campo: con coma, como se escribe aquí.
+function numTxt(n){
+  if(n === "" || n == null) return "";
+  const txt = typeof n === "number" ? (isNaN(n) ? "" : String(n)) : String(n);
+  return txt.replace(/[^\d.,]/g, "").replace(".", ",");
+}
+
+/* Y al revés: un número se enseña como se escribe aquí, con coma. Ver
+   "62.5 kg" mientras escribes "62,5" es la misma falta de respeto al idioma
+   que tirar la coma. */
+function coma(n){
+  return typeof n === "number" ? String(n).replace(".", ",") : numTxt(n);
+}
+
+/* Un campo de texto se traga cualquier cosa, así que se limpia según se
+   escribe. Solo se quita lo que no es número, y el cursor se queda donde
+   estaba: corregir un peso a mitad de la serie no puede pelearse contigo. */
+document.addEventListener("input", (e)=>{
+  const el = e.target;
+  if(!el || el.tagName !== "INPUT" || el.type !== "text" || el.inputMode !== "decimal") return;
+  const limpio = el.value.replace(/[^\d.,]/g, "");
+  if(limpio === el.value) return;
+  const quitados = el.value.length - limpio.length;
+  const pos = (el.selectionStart || limpio.length) - quitados;
+  el.value = limpio;
+  try{ el.setSelectionRange(pos, pos); }catch(err){}
+}, true);
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
@@ -213,7 +261,7 @@ RENDERERS.hoy = function(){
     <div class="card">
       <div class="kpi">
         <span class="muted">Peso actual</span>
-        <b>${ultimoPeso? ultimoPeso.kg+" kg" : PERFIL.peso_inicial_kg+" kg (inicial)"}</b>
+        <b>${ultimoPeso? coma(ultimoPeso.kg)+" kg" : coma(PERFIL.peso_inicial_kg)+" kg (inicial)"}</b>
       </div>
       <div class="muted" style="font-size:.78rem;">${ultimoPeso? "Último pesaje: "+fmtFecha(ultimoPeso.fecha) : "Aún no has registrado ningún pesaje."}</div>
       ${cardPesoHTML(hoyISO, tocaPesaje, "Toca pesarte. En ayunas, después de mear.")}
@@ -287,7 +335,7 @@ function cardPesoHTML(hoyISO, mostrar, texto){
     <hr>
     <p class="muted" style="font-size:.82rem;">${escapeHtml(texto)}</p>
     <div class="row">
-      <input type="number" id="pesoRapido" placeholder="kg" step="0.1" style="flex:1;">
+      <input type="text" inputmode="decimal" id="pesoRapido" placeholder="kg" style="flex:1;">
       <button class="btn btn-primary btn-small" id="btnPesoRapido">Guardar</button>
     </div>`;
 }
@@ -342,7 +390,7 @@ function engancharHoy(hoyISO, diaKey, esDescanso){
 
   const btnPesoRapido = document.getElementById("btnPesoRapido");
   if(btnPesoRapido) btnPesoRapido.addEventListener("click", ()=>{
-    const kg = parseFloat(document.getElementById("pesoRapido").value);
+    const kg = aNumero(document.getElementById("pesoRapido").value);
     if(!kg) return;
     Datos.añadirPesaje(hoyISO, kg);
     RENDERERS.hoy();
@@ -675,15 +723,15 @@ function renderCalentamiento(primerEx){
   const trabajo = pesoTrabajo(primerEx.id);
   const aprox = trabajo
     ? [`Barra vacía o muy poco peso × 10`,
-       `${redondear(trabajo*0.5)} kg × 5`,
-       `${redondear(trabajo*0.75)} kg × 3`]
+       `${coma(redondear(trabajo*0.5))} kg × 5`,
+       `${coma(redondear(trabajo*0.75))} kg × 3`]
     : CALENTAMIENTO.aproximacion;
   return `
   <details>
     <summary>Calentamiento — no me lo salto</summary>
     <div class="body">
       <p style="font-size:.88rem;">${escapeHtml(CALENTAMIENTO.general)}</p>
-      <p style="font-size:.88rem;">Aproximación en <b>${escapeHtml(primerEx.nombre)}</b>${trabajo? ` (peso de trabajo ${trabajo} kg)`:""}:</p>
+      <p style="font-size:.88rem;">Aproximación en <b>${escapeHtml(primerEx.nombre)}</b>${trabajo? ` (peso de trabajo ${coma(trabajo)} kg)`:""}:</p>
       <ul style="font-size:.88rem;">${aprox.map(a=>`<li>${escapeHtml(a)}</li>`).join("")}</ul>
       <p class="muted" style="font-size:.8rem;">${escapeHtml(CALENTAMIENTO.nota)}</p>
     </div>
@@ -692,11 +740,11 @@ function renderCalentamiento(primerEx){
 
 function renderEjercicio(ex, idx){
   const uv = ultimaVez(ex.id);
-  const uvTxt = uv ? uv.series.map(st=>`${st.peso}kg×${st.repes}`).join(", ") : "Sin registros previos";
+  const uvTxt = uv ? uv.series.map(st=>`${coma(st.peso)}kg×${st.repes}`).join(", ") : "Sin registros previos";
   const sug = state.subirPeso[ex.id];
   const avisoSubir = sug
     ? (typeof sug === "object" && sug.hasta
-        ? `<span class="badge on">Sube a ${sug.hasta} kg</span>`
+        ? `<span class="badge on">Sube a ${coma(sug.hasta)} kg</span>`
         : `<span class="badge on">Sube peso</span>`)
     : "";
   const completo = ex.sets.every(st=>st.done);
@@ -721,7 +769,7 @@ function renderEjercicio(ex, idx){
     ${ex.sets.map((st,si)=>`
       <div class="exset">
         <div class="lbl">#${si+1}</div>
-        <input type="number" inputmode="decimal" placeholder="${st.sugPeso!==""&&st.sugPeso!=null? st.sugPeso : "kg"}" value="${st.peso}" data-peso data-ex="${idx}" data-set="${si}">
+        <input type="text" inputmode="decimal" placeholder="${st.sugPeso!==""&&st.sugPeso!=null? numTxt(st.sugPeso) : "kg"}" value="${numTxt(st.peso)}" data-peso data-ex="${idx}" data-set="${si}">
         <input type="number" inputmode="numeric" placeholder="${st.sugRepes!==""&&st.sugRepes!=null? st.sugRepes : "repes"}" value="${st.repes}" data-repes data-ex="${idx}" data-set="${si}">
         <button class="chk ${st.done?'on':''}" data-ex="${idx}" data-set="${si}"
           aria-pressed="${st.done}" aria-label="Serie ${si+1} de ${escapeHtml(ex.nombre)}">${st.done?'✓':'—'}</button>
@@ -876,7 +924,7 @@ function explicarSugerencia(ex){
   const sug = state.subirPeso[ex.id];
   const {low, high} = parseRepRange(ex.repes);
   const subiendo = !!(sug && sug.hasta);
-  const anterior = uv ? uv.series.map(st=>`${st.peso} kg × ${st.repes}`).join(" · ") : "—";
+  const anterior = uv ? uv.series.map(st=>`${coma(st.peso)} kg × ${st.repes}`).join(" · ") : "—";
 
   showModal(`
     <h2>${escapeHtml(ex.nombre)}</h2>
@@ -885,9 +933,9 @@ function explicarSugerencia(ex){
       <dt>Rango</dt><dd>${low}${high!==low? " a "+high : ""} repeticiones${high!==low? " por serie" : ""}</dd>
       <dt>Última vez</dt><dd>${escapeHtml(anterior)}</dd>
       <dt>Lectura</dt><dd>${subiendo
-        ? `Completaste el tope del rango en todas las series con ${sug.desde} kg, así que toca subir ${(sug.hasta-sug.desde).toFixed(2).replace(".",",").replace(",00","")} kg y volver a ${low}.`
+        ? `Completaste el tope del rango en todas las series con ${coma(sug.desde)} kg, así que toca subir ${(sug.hasta-sug.desde).toFixed(2).replace(".",",").replace(",00","")} kg y volver a ${low}.`
         : `Aún no has llegado al tope en todas las series, así que se repite el peso buscando una repetición más.`}</dd>
-      <dt>Propuesta</dt><dd><b>${ex.sets[0].sugPeso} kg × ${ex.sets[0].sugRepes}</b>, dejando 1-2 repeticiones en recámara.</dd>
+      <dt>Propuesta</dt><dd><b>${coma(ex.sets[0].sugPeso)} kg × ${ex.sets[0].sugRepes}</b>, dejando 1-2 repeticiones en recámara.</dd>
     </dl>
     <p class="muted" style="font-size:.82rem;margin-top:12px;">Es una propuesta, no una orden: si has dormido mal o comido poco, baja y repite peso.</p>
     <button class="btn btn-primary" id="mCerrar" style="margin-top:8px;">Entendido</button>
@@ -924,7 +972,7 @@ function terminarSesion(){
     const setsGuardables = ex.sets.filter(st=>st.done && st.peso!=="" && st.repes!=="");
     if(setsGuardables.length===0) return;
     seriesHechas += setsGuardables.length;
-    const series = setsGuardables.map(st=>({peso:Number(st.peso), repes:Number(st.repes)}));
+    const series = setsGuardables.map(st=>({peso:aNumero(st.peso), repes:aEntero(st.repes)}));
     series.forEach(st=> volumen += st.peso*st.repes);
     porEjercicio.push({ejercicioId:ex.id, series});
     const {high} = parseRepRange(ex.repes);
@@ -997,13 +1045,13 @@ RENDERERS.progreso = function(){
         const u = Datos.pesajes.length? Datos.pesajes[Datos.pesajes.length-1].kg : PERFIL.peso_inicial_kg;
         const falta = (objetivo("peso_objetivo_12_meses_kg") - u).toFixed(1);
         return `<div class="kpi" style="margin-top:6px;">
-          <span class="muted" style="font-size:.8rem;">Desde ${PERFIL.peso_inicial_kg} kg · objetivo ${objetivo("peso_objetivo_12_meses_kg")} kg</span>
-          <span class="muted" style="font-size:.8rem;">${falta>0? "faltan "+falta+" kg" : "objetivo cumplido"}</span>
+          <span class="muted" style="font-size:.8rem;">Desde ${coma(PERFIL.peso_inicial_kg)} kg · objetivo ${coma(objetivo("peso_objetivo_12_meses_kg"))} kg</span>
+          <span class="muted" style="font-size:.8rem;">${falta>0? "faltan "+coma(falta)+" kg" : "objetivo cumplido"}</span>
         </div>`;
       })()}
       <div class="grid2" style="margin-top:14px;">
         <div><label>Fecha</label><input type="date" id="pesoFecha" value="${hoy}"></div>
-        <div><label>Peso (kg)</label><input type="number" id="pesoKg" placeholder="0,0" step="0.1" inputmode="decimal"></div>
+        <div><label>Peso (kg)</label><input type="text" inputmode="decimal" id="pesoKg" placeholder="0,0"></div>
       </div>
       <button class="btn btn-primary" id="btnAddPeso" style="margin-top:10px;">Añadir pesaje</button>
       ${Datos.pesajes.length ? `
@@ -1012,7 +1060,7 @@ RENDERERS.progreso = function(){
           <div class="body">
             ${Datos.pesajes.slice(-8).reverse().map(p=>`
               <div class="row" style="justify-content:space-between;align-items:center;">
-                <span style="font-variant-numeric:tabular-nums;">${fmtFecha(p.fecha)} · ${p.kg} kg</span>
+                <span style="font-variant-numeric:tabular-nums;">${fmtFecha(p.fecha)} · ${coma(p.kg)} kg</span>
                 <button class="item-x" data-borrar-pesaje="${p.fecha}" aria-label="Borrar el pesaje del ${fmtFecha(p.fecha)}">✕</button>
               </div>`).join("")}
             <p class="muted" style="font-size:.78rem;margin-top:8px;">Volver a guardar la misma fecha la sobrescribe.</p>
@@ -1033,7 +1081,7 @@ RENDERERS.progreso = function(){
 
     <div class="card">
       <h2>Récords personales</h2>
-      ${prs.length? `<table><tbody>${prs.map(p=>`<tr><td>${escapeHtml(p.nombre)}</td><td>${p.max} kg × ${p.repes}</td><td class="muted">${fmtFecha(p.fecha)}</td></tr>`).join("")}</tbody></table>`
+      ${prs.length? `<table><tbody>${prs.map(p=>`<tr><td>${escapeHtml(p.nombre)}</td><td>${coma(p.max)} kg × ${p.repes}</td><td class="muted">${fmtFecha(p.fecha)}</td></tr>`).join("")}</tbody></table>`
         : `<p class="muted">Aún no hay sesiones registradas.</p>`}
     </div>
 
@@ -1048,13 +1096,13 @@ RENDERERS.progreso = function(){
     <div class="card">
       <h2>Medidas (cada 2 meses)</h2>
       <div class="grid3" style="margin-bottom:8px;">
-        <input type="number" id="mBrazo" placeholder="Brazo cm">
-        <input type="number" id="mPecho" placeholder="Pecho cm">
-        <input type="number" id="mMuslo" placeholder="Muslo cm">
+        <input type="text" inputmode="decimal" id="mBrazo" placeholder="Brazo cm">
+        <input type="text" inputmode="decimal" id="mPecho" placeholder="Pecho cm">
+        <input type="text" inputmode="decimal" id="mMuslo" placeholder="Muslo cm">
       </div>
       <div class="grid2" style="margin-bottom:8px;">
-        <input type="number" id="mGemelo" placeholder="Gemelo cm">
-        <input type="number" id="mAntebrazo" placeholder="Antebrazo cm">
+        <input type="text" inputmode="decimal" id="mGemelo" placeholder="Gemelo cm">
+        <input type="text" inputmode="decimal" id="mAntebrazo" placeholder="Antebrazo cm">
       </div>
       <button class="btn btn-primary btn-small" id="btnAddMedidas">Guardar medidas</button>
       ${Datos.medidas.length>1 ? `
@@ -1133,7 +1181,7 @@ RENDERERS.progreso = function(){
 
   document.getElementById("btnAddPeso").addEventListener("click", ()=>{
     const fecha = document.getElementById("pesoFecha").value || hoy;
-    const kg = parseFloat(document.getElementById("pesoKg").value);
+    const kg = aNumero(document.getElementById("pesoKg").value);
     if(!kg) return;
     Datos.añadirPesaje(fecha, kg);
     RENDERERS.progreso();
@@ -1168,8 +1216,8 @@ RENDERERS.progreso = function(){
   if(selMedida){
     const pintar = ()=>{
       const puntos = Datos.medidas
-        .filter(m=> m[selMedida.value] !== "" && m[selMedida.value] != null)
-        .map(m=>({v:Number(m[selMedida.value]), fecha:m.fecha}));
+        .map(m=>({v:aNumero(m[selMedida.value]), fecha:m.fecha}))
+        .filter(p=> !isNaN(p.v));
       document.getElementById("chartMedida").innerHTML =
         puntos.length>1 ? svgLineChart(puntos, {minSpan:2})
                         : `<p class="muted" style="font-size:.85rem;">Hacen falta dos medidas para ver la evolución.</p>`;
@@ -1179,13 +1227,14 @@ RENDERERS.progreso = function(){
   }
 
   document.getElementById("btnAddMedidas").addEventListener("click", ()=>{
+    const leer = id=>{
+      const n = aNumero(document.getElementById(id).value);
+      return isNaN(n) ? null : n;
+    };
     const m = {
       fecha: hoy,
-      brazo: document.getElementById("mBrazo").value,
-      pecho: document.getElementById("mPecho").value,
-      muslo: document.getElementById("mMuslo").value,
-      gemelo: document.getElementById("mGemelo").value,
-      antebrazo: document.getElementById("mAntebrazo").value
+      brazo: leer("mBrazo"), pecho: leer("mPecho"), muslo: leer("mMuslo"),
+      gemelo: leer("mGemelo"), antebrazo: leer("mAntebrazo")
     };
     Datos.añadirMedidas(m);
     RENDERERS.progreso();
@@ -1197,9 +1246,9 @@ RENDERERS.progreso = function(){
   });
 
   document.getElementById("btnObjetivos").addEventListener("click", ()=>{
-    const proteina = parseFloat(document.getElementById("objProteina").value);
-    const kcal = parseFloat(document.getElementById("objKcal").value);
-    const peso = parseFloat(document.getElementById("objPeso").value);
+    const proteina = aEntero(document.getElementById("objProteina").value);
+    const kcal = aEntero(document.getElementById("objKcal").value);
+    const peso = aNumero(document.getElementById("objPeso").value);
     state.objetivos = {
       proteina_objetivo_g: proteina || PERFIL.proteina_objetivo_g,
       calorias_objetivo: kcal || PERFIL.calorias_objetivo,
@@ -1276,7 +1325,7 @@ function verSesion(id){
         ${g.series.map((s,i)=>`
           <div class="exset" style="grid-template-columns:26px 1fr 1fr 44px;">
             <div class="lbl">#${i+1}</div>
-            <input type="number" inputmode="decimal" value="${s.peso}" data-editar-peso="${s.id}" aria-label="Peso de la serie ${i+1}">
+            <input type="text" inputmode="decimal" value="${numTxt(s.peso)}" data-editar-peso="${s.id}" aria-label="Peso de la serie ${i+1}">
             <input type="number" inputmode="numeric" value="${s.repes}" data-editar-repes="${s.id}" aria-label="Repeticiones de la serie ${i+1}">
             <button class="item-x" data-borrar-serie="${s.id}" aria-label="Borrar la serie ${i+1}">✕</button>
           </div>`).join("")}
@@ -1309,8 +1358,8 @@ function verSesion(id){
       const serieId = Number(inp.dataset.editarPeso);
       const repes = document.querySelector(`[data-editar-repes="${serieId}"]`);
       Datos.actualizarSerie(serieId, {
-        peso: Number(inp.value) || 0,
-        repes: Number(repes.value) || 0
+        peso: aNumero(inp.value) || 0,
+        repes: aEntero(repes.value) || 0
       });
     });
     Datos.actualizarSesion(id, {nota: document.getElementById("notaSesion").value.trim()});
@@ -1349,10 +1398,10 @@ function cardObjetivosHTML(){
       </div>
       <div class="field" style="margin-top:10px;">
         <label for="objPeso">Peso objetivo (kg)</label>
-        <input type="number" id="objPeso" inputmode="decimal" step="0.5" value="${objetivo("peso_objetivo_12_meses_kg")}">
+        <input type="text" inputmode="decimal" id="objPeso" value="${numTxt(objetivo("peso_objetivo_12_meses_kg"))}">
       </div>
       <p class="muted" style="font-size:.8rem;">
-        ${prote} g con ${peso} kg son <b>${porKilo} g por kilo</b>. Para ganar músculo se suele
+        ${prote} g con ${coma(peso)} kg son <b>${porKilo} g por kilo</b>. Para ganar músculo se suele
         apuntar a 1,6-2,2. Cuando subas de peso, este número baja solo.
       </p>
       <button class="btn btn-primary btn-small" id="btnObjetivos">Guardar objetivos</button>
@@ -1498,12 +1547,12 @@ function avisoRitmoPeso(){
   const dif = ultimo.kg - ref.kg;
   const porSemana = dif/(dias/7);
   if(dif < 0.3){
-    return {color:"var(--accent)", txt:`Llevas ${Math.round(dias/7)} semanas y has subido ${dif.toFixed(1)} kg. <b>Come más:</b> 300 kcal al día — puñado de frutos secos + vaso de leche + chorro de aceite.`};
+    return {color:"var(--accent)", txt:`Llevas ${Math.round(dias/7)} semanas y has subido ${coma(dif.toFixed(1))} kg. <b>Come más:</b> 300 kcal al día — puñado de frutos secos + vaso de leche + chorro de aceite.`};
   }
   if(porSemana > 1){
-    return {color:"var(--accent2)", txt:`Estás subiendo ${porSemana.toFixed(1)} kg por semana. Frena un poco o cogerás grasa de más.`};
+    return {color:"var(--accent2)", txt:`Estás subiendo ${coma(porSemana.toFixed(1))} kg por semana. Frena un poco o cogerás grasa de más.`};
   }
-  return {color:"var(--good)", txt:`${porSemana.toFixed(1)} kg por semana. Vas en el ritmo bueno (0,3-0,5). Sigue comiendo igual.`};
+  return {color:"var(--good)", txt:`${coma(porSemana.toFixed(1))} kg por semana. Vas en el ritmo bueno (0,3-0,5). Sigue comiendo igual.`};
 }
 function renderEjercicioChart(exId){
   const pts = Datos.historialDe(exId).map(ses=>({v: Math.max(...ses.series.map(s=>s.peso)), fecha: ses.fecha}));
@@ -1590,7 +1639,7 @@ function editarAlimento(id){
       <input type="text" id="alRacion" value="${a? escapeHtml(a.racion||""):""}" placeholder="1 tarrina (250 g)"></div>
     <div class="row">
       <div class="col field"><label for="alProte">Proteína (g)</label>
-        <input type="number" id="alProte" inputmode="decimal" value="${a? a.proteina_g:""}"></div>
+        <input type="text" inputmode="decimal" id="alProte" value="${a? numTxt(a.proteina_g):""}"></div>
       <div class="col field"><label for="alKcal">Kcal</label>
         <input type="number" id="alKcal" inputmode="numeric" value="${a? a.kcal:""}"></div>
     </div>
@@ -1603,14 +1652,14 @@ function editarAlimento(id){
 
   document.getElementById("mGuardarAlimento").addEventListener("click", ()=>{
     const nombre = document.getElementById("alNombre").value.trim();
-    const proteina = parseFloat(document.getElementById("alProte").value);
+    const proteina = aNumero(document.getElementById("alProte").value);
     if(!nombre || isNaN(proteina)) return;
     Datos.guardarAlimento({
       id: id || "propio_" + normalizar(nombre).replace(/[^a-z0-9]+/g, "_").slice(0, 30) + "_" + Date.now(),
       nombre,
       racion: document.getElementById("alRacion").value.trim(),
       proteina_g: proteina,
-      kcal: parseFloat(document.getElementById("alKcal").value) || 0,
+      kcal: aEntero(document.getElementById("alKcal").value) || 0,
       cat: (a && a.cat) || "Rápido"
     });
     closeModal();
@@ -1814,7 +1863,7 @@ RENDERERS.comida = function(){
       <p class="muted" style="font-size:.85rem;">Para lo que no está en la lista: la comida en familia, el bocadillo de la calle...</p>
       <div class="field"><label>Qué era</label><input type="text" id="oNombre" placeholder="Comida en familia"></div>
       <div class="row">
-        <div class="col field"><label>Proteína (g)</label><input type="number" id="oProte" inputmode="decimal" placeholder="30"></div>
+        <div class="col field"><label>Proteína (g)</label><input type="text" inputmode="decimal" id="oProte" placeholder="30"></div>
         <div class="col field"><label>Kcal (opcional)</label><input type="number" id="oKcal" inputmode="numeric" placeholder="600"></div>
       </div>
       <div class="row" style="margin-top:6px;">
@@ -1823,8 +1872,8 @@ RENDERERS.comida = function(){
       </div>`, {center:true});
     document.getElementById("mCerrar").addEventListener("click", closeModal);
     document.getElementById("mGuardar").addEventListener("click", ()=>{
-      const prote = parseFloat(document.getElementById("oProte").value) || 0;
-      const kcal = parseFloat(document.getElementById("oKcal").value) || 0;
+      const prote = aNumero(document.getElementById("oProte").value) || 0;
+      const kcal = aEntero(document.getElementById("oKcal").value) || 0;
       const nombre = document.getElementById("oNombre").value.trim() || "Otra comida";
       if(!prote && !kcal) return;
       closeModal();

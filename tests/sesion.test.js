@@ -30,14 +30,14 @@ describe("Sesión de entrenamiento", () => {
     await app.pagina.waitForSelector(".exset");
     const peso = await app.pagina.getAttribute('input[data-peso][data-ex="0"][data-set="0"]', "placeholder");
     const repes = await app.pagina.getAttribute('input[data-repes][data-ex="0"][data-set="0"]', "placeholder");
-    assert.equal(peso, "42.5");
+    assert.equal(peso, "42,5", "con coma, que es como se escribe aquí");
     assert.equal(repes, "6", "tras subir peso se vuelve al tope bajo del rango");
   });
 
   test("un solo toque registra la serie sugerida", async () => {
     await app.pagina.click('.chk[data-ex="0"][data-set="0"]');
     await app.pagina.waitForTimeout(200);
-    assert.equal(await app.pagina.inputValue('input[data-peso][data-ex="0"][data-set="0"]'), "42.5");
+    assert.equal(await app.pagina.inputValue('input[data-peso][data-ex="0"][data-set="0"]'), "42,5");
     assert.equal(await app.pagina.inputValue('input[data-repes][data-ex="0"][data-set="0"]'), "6");
   });
 

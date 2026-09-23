@@ -28,7 +28,7 @@ tests/                    pruebas de extremo a extremo
 npm ci                       # solo eslint y playwright
 npx playwright install chromium
 npm run serve                # http://localhost:8080
-npm test                     # 118 pruebas sobre un navegador real
+npm test                     # 128 pruebas sobre un navegador real
 npm run lint
 ```
 
@@ -117,6 +117,12 @@ Los 130 g de proteína, las 2900 kcal y los 74 kg de peso objetivo se editan des
 El catálogo son productos que se compran en el Mercadona, con raciones de verdad (una lata escurrida, un vaso de 250 ml, 150 g de pechuga) en vez de "100 g" de algo abstracto. Los valores son orientativos por ración: las recetas cambian y cada formato trae lo suyo, así que **cualquier valor se corrige con el de tu etiqueta** tocando el lápiz, y esa corrección se guarda como tuya para siempre. Lo que compras y no está, se añade como alimento fijo.
 
 Lo que más repites sale arriba del todo, calculado de tu propio historial: después de una semana son casi todo lo que necesitas.
+
+## Números con coma
+
+En el teclado del móvil en español la tecla decimal es una coma, y un `input type="number"` la tira sin avisar: escribir `62,5` guardaba **625**. Un peso corporal o una mancuerna multiplicados por diez envenenan el récord, el volumen y las gráficas para siempre, que es justo lo que esta web intenta evitar.
+
+Así que los campos con decimales (pesos, pesajes, medidas, proteína) son de texto con teclado numérico, y todo número se lee aceptando coma o punto. Los enteros —kilocalorías, repeticiones— se leen quitando separadores: aquí `2.900` son dos mil novecientas calorías, no dos coma nueve. Y al revés: los números se enseñan con coma, como se escriben.
 
 ## Corregir errores
 
